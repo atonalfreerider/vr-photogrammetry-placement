@@ -1,5 +1,4 @@
-﻿using UnityEditor;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Shapes
 {
@@ -33,14 +32,23 @@ namespace Shapes
                 Extrude(skinList, indList, d, false, true, 0);
             }
         }
+
+        public void LoadTexture(byte[] image)
+        {
+            // Don't use mipmaps because we want to show all the high-density data contained in the texture.
+            Texture2D texture =
+                new(100, 100, TextureFormat.RGBA32, false)
+                    {filterMode = FilterMode.Point};
+
+            texture.LoadImage(image);
+            rend.material.SetTexture(Shader.PropertyToID("_MainTex"), texture);
+        }
     }
 
     public static class NewCube
     {
-        public static Polygon cube, solidCube;
-
         // rectangles
-        public static Rectangle transRectPoly, textureRectPoly;
+        public static Rectangle textureRectPoly;
 
         public static void InitCube(PolygonFactory polygonFactory)
         {
@@ -57,6 +65,7 @@ namespace Shapes
             textureMesh.uv = uvs;
             textureRectPoly.name = "textureRectPoly";
             textureRectPoly.transform.SetParent(polygonFactory.transform, false);
+            textureRectPoly.transform.gameObject.SetActive(false);
         }
     }
 }
