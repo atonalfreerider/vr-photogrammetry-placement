@@ -26,6 +26,8 @@ public class Main : MonoBehaviour
                 
             photo.transform.Translate(Vector3.down * count *.01f);
             photo.transform.localScale = new Vector3(bitmap.Width, 1, bitmap.Height) * .001f;
+            
+            photo.AddCollider();
             count++;
         }
     }

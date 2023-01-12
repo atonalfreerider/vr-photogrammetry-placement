@@ -128,7 +128,7 @@ namespace Shapes
         public void Draw3DPoly(Vector3[] vertices, int[] indices)
         {
             // https://docs.unity3d.com/ScriptReference/Mesh.html
-            
+
             // Retrieve the mesh
             Mesh sharedMesh = meshFilter.sharedMesh;
 
@@ -214,6 +214,13 @@ namespace Shapes
 
             ChangeColorProperties(color);
             colorAnimator = null;
+        }
+
+        public void AddCollider()
+        {
+            BoxCollider collider = gameObject.AddComponent<BoxCollider>();
+            collider.size = new Vector3(transform.localScale.x * .25f, .1f, transform.localScale.z * .25f);
+            collider.isTrigger = true;
         }
 
         #endregion
