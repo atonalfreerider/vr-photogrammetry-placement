@@ -42,6 +42,7 @@ namespace Shapes
 
             texture.LoadImage(image);
             rend.material.SetTexture(Shader.PropertyToID("_MainTex"), texture);
+            rend.material.color = new Color(1, 1, 1, .5f);
         }
     }
 
