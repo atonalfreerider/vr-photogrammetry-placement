@@ -1,9 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
+using CsvHelper;
+using CsvHelper.Configuration;
+using JetBrains.Annotations;
 using Newtonsoft.Json;
 using UnityEngine;
-using UnityEngine.Windows;
+using File = UnityEngine.Windows.File;
 
 [Serializable]
 public class PositionAndRotation
@@ -33,11 +39,34 @@ public class PositionAndRotation
 
 public class Serializer
 {
+    [PublicAPI]
+    class GeoTag
+    {
+        public float GPSLongitude { get; set; }
+        public float GPSAltitude { get; set; }
+        public float GPSLatitude { get; set; }
+        public float GPSImgDirection { get; set; }
+        public float GPSPitch { get; set; }
+        public float GPSRoll { get; set; }
+
+        public GeoTag(float longitude, float altitude, float latitude, float imgDirection, float pitch, float roll)
+        {
+            GPSLongitude = longitude;
+            GPSAltitude = altitude;
+            GPSLatitude = latitude;
+            GPSImgDirection = imgDirection;
+            GPSPitch = pitch;
+            GPSRoll = roll;
+        }
+    }
+
     readonly string jsonPath;
+    readonly string csvPath;
 
     public Serializer(string path)
     {
         jsonPath = path;
+        csvPath = path;
     }
 
     public void SerializeCartesian(Dictionary<string, GameObject> pics)
@@ -50,7 +79,7 @@ public class Serializer
         Dictionary<string, PositionAndRotation> picsPos = pics.ToDictionary(
             x => x.Key,
             x => new PositionAndRotation(
-                x.Value.transform.localPosition, 
+                x.Value.transform.localPosition,
                 x.Value.transform.localRotation.eulerAngles));
 
         string dictionaryString = JsonConvert.SerializeObject(picsPos, Formatting.Indented);
@@ -58,31 +87,46 @@ public class Serializer
 
         Debug.Log("Saved to " + jsonPath);
     }
-    
+
     public void SerializeGeoTag(Dictionary<string, GameObject> pics, Vector3 sceneOffset)
     {
-        if (File.Exists(jsonPath))
+        if (File.Exists(csvPath))
         {
-            File.Delete(jsonPath);
+            File.Delete(csvPath);
         }
 
-        Dictionary<string, PositionAndRotation> picsPos = pics.ToDictionary(
+        Dictionary<string, GeoTag> picsPos = pics.ToDictionary(
             x => x.Key,
-            x => new PositionAndRotation(
-                MeterVector3ToLongitudeAltitudeLatitude(x.Value.transform.localPosition) + sceneOffset,
+            x => ToGeoTag(
+                x.Value.transform.localPosition,
+                sceneOffset,
                 x.Value.transform.localRotation.eulerAngles));
 
-        string dictionaryString = JsonConvert.SerializeObject(picsPos, Formatting.Indented);
-        System.IO.File.WriteAllText(jsonPath, dictionaryString);
+        CsvConfiguration config = new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            Delimiter = ",",
+            Encoding = Encoding.UTF8
+        };
+        using (StreamWriter writer = new StreamWriter(csvPath))
+        using (CsvWriter csv = new CsvWriter(writer, config))
+        {
+            csv.WriteRecords(picsPos);
+        }
 
-        Debug.Log("Saved to " + jsonPath);
+        Debug.Log("Saved to " + csvPath);
     }
-    
-    static Vector3 MeterVector3ToLongitudeAltitudeLatitude(Vector3 meterVector2)
-    {
-        float longitude = meterVector2.x / 111319.9f;
-        float latitude = meterVector2.z / 111319.9f;
 
-        return new Vector3(longitude, meterVector2.y, latitude);
+    static GeoTag ToGeoTag(Vector3 meterVector3, Vector3 offset, Vector3 euler)
+    {
+        float longitude = meterVector3.x / 111319.9f;
+        float latitude = meterVector3.z / 111319.9f;
+
+        return new GeoTag(
+            longitude + offset.x,
+            latitude + offset.y,
+            meterVector3.y + offset.z,
+            euler.x,
+            euler.y,
+            euler.z);
     }
 }

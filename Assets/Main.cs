@@ -72,7 +72,7 @@ public class Main : MonoBehaviour
 
         if (Keyboard.current.f2Key.wasPressedThisFrame)
         {
-            Serializer serializer = new Serializer(Path.Combine(PhotoFolderPath, "geo.json"));
+            Serializer serializer = new Serializer(Path.Combine(PhotoFolderPath, "geo.csv"));
             serializer.SerializeGeoTag(pics, sceneOffset);
         }
     }
