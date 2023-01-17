@@ -16,8 +16,7 @@ public class Main : MonoBehaviour
     public float SceneLatitude;
 
     Vector3 sceneOffset => new(SceneLongitude, ScneneAltitude, SceneLatitude);
-    
-    Serializer serializer;
+
     string jsonPath => Path.Combine(PhotoFolderPath, "positions.json");
 
     readonly Dictionary<string, GameObject> pics = new();
@@ -25,7 +24,7 @@ public class Main : MonoBehaviour
     void Start()
     {
         DirectoryInfo root = new DirectoryInfo(PhotoFolderPath);
-        serializer = new Serializer(jsonPath);
+
         int count = 0;
         foreach (FileInfo file in root.EnumerateFiles("*.jpg"))
         {
@@ -67,18 +66,14 @@ public class Main : MonoBehaviour
     {
         if (Keyboard.current.f1Key.wasPressedThisFrame)
         {
+            Serializer serializer = new Serializer(jsonPath);
             serializer.SerializeCartesian(pics);
         }
 
         if (Keyboard.current.f2Key.wasPressedThisFrame)
         {
-            foreach (KeyValuePair<string, GameObject> keyValuePair in pics)
-            {
-                Vector3 longitudeLatitudeAltitude = Serializer.MeterVector3ToLongitudeAltitudeLatitude(keyValuePair.Value.transform.localPosition);
-                longitudeLatitudeAltitude += sceneOffset;
-                
-                Debug.Log(longitudeLatitudeAltitude);
-            }
+            Serializer serializer = new Serializer(Path.Combine(PhotoFolderPath, "geo.json"));
+            serializer.SerializeGeoTag(pics, sceneOffset);
         }
     }
 }
