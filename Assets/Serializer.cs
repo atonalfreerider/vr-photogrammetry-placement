@@ -42,6 +42,8 @@ public class Serializer
     [PublicAPI]
     class GeoTag
     {
+        public string SourceFile { get; set; }
+        public DateTime GPSDateTime { get; set; }
         public float GPSLongitude { get; set; }
         public float GPSAltitude { get; set; }
         public float GPSLatitude { get; set; }
@@ -49,14 +51,36 @@ public class Serializer
         public float GPSPitch { get; set; }
         public float GPSRoll { get; set; }
 
-        public GeoTag(float longitude, float altitude, float latitude, float imgDirection, float pitch, float roll)
+        public GeoTag(
+            string sourceFile, 
+            DateTime gpsDateTime,
+            float longitude, float altitude, float latitude, 
+            float imgDirection, float pitch, float roll)
         {
+            SourceFile = sourceFile;
+            GPSDateTime = gpsDateTime;
             GPSLongitude = longitude;
             GPSAltitude = altitude;
             GPSLatitude = latitude;
             GPSImgDirection = imgDirection;
             GPSPitch = pitch;
             GPSRoll = roll;
+        }
+    }
+    
+    [PublicAPI]
+    sealed class ContractMap : ClassMap<GeoTag>
+    {
+        public ContractMap()
+        {
+            Map(m => m.SourceFile).Index(0).Name("SourceFile");
+            Map(m => m.GPSDateTime).Index(1).Name("XMP:GPSDateTime");
+            Map(m => m.GPSLongitude).Index(2).Name("XMP:GPSLongitude");
+            Map(m => m.GPSAltitude).Index(3).Name("XMP:GPSAltitude");
+            Map(m => m.GPSLatitude).Index(4).Name("XMP:GPSLatitude");
+            Map(m => m.GPSImgDirection).Index(5).Name("XMP:GPSImgDirection");
+            Map(m => m.GPSPitch).Index(6).Name("XMP:GPSPitch");
+            Map(m => m.GPSRoll).Index(7).Name("XMP:GPSRoll");
         }
     }
 
@@ -88,19 +112,20 @@ public class Serializer
         Debug.Log("Saved to " + jsonPath);
     }
 
-    public void SerializeGeoTag(Dictionary<string, GameObject> pics, Vector3 sceneOffset)
+    public void SerializeGeoTag(Dictionary<string, GameObject> pics, Vector3 sceneOffset, Dictionary<string, DateTime> picsByDateTime)
     {
         if (File.Exists(csvPath))
         {
             File.Delete(csvPath);
         }
 
-        Dictionary<string, GeoTag> picsPos = pics.ToDictionary(
-            x => x.Key,
+        IEnumerable<GeoTag> picsPos = pics.Select(
             x => ToGeoTag(
+                x.Key,
                 x.Value.transform.localPosition,
                 sceneOffset,
-                x.Value.transform.localRotation.eulerAngles));
+                x.Value.transform.localRotation.eulerAngles,
+                picsByDateTime[x.Key]));
 
         CsvConfiguration config = new CsvConfiguration(CultureInfo.InvariantCulture)
         {
@@ -110,18 +135,21 @@ public class Serializer
         using (StreamWriter writer = new StreamWriter(csvPath))
         using (CsvWriter csv = new CsvWriter(writer, config))
         {
+            csv.Context.RegisterClassMap<ContractMap>();
             csv.WriteRecords(picsPos);
         }
 
         Debug.Log("Saved to " + csvPath);
     }
 
-    static GeoTag ToGeoTag(Vector3 meterVector3, Vector3 offset, Vector3 euler)
+    static GeoTag ToGeoTag(string sourceFile, Vector3 meterVector3, Vector3 offset, Vector3 euler, DateTime dateTime)
     {
         float longitude = meterVector3.x / 111319.9f;
         float latitude = meterVector3.z / 111319.9f;
 
         return new GeoTag(
+            sourceFile,
+            dateTime,
             longitude + offset.x,
             latitude + offset.y,
             meterVector3.y + offset.z,

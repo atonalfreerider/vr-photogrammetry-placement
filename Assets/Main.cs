@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using Newtonsoft.Json;
@@ -20,6 +21,7 @@ public class Main : MonoBehaviour
     string jsonPath => Path.Combine(PhotoFolderPath, "positions.json");
 
     readonly Dictionary<string, GameObject> pics = new();
+    readonly Dictionary<string, DateTime> picsByDate = new();
 
     void Start()
     {
@@ -43,6 +45,7 @@ public class Main : MonoBehaviour
             photo.AddCollider();
 
             pics.Add(file.FullName, photo.gameObject);
+            picsByDate.Add(file.FullName, file.CreationTime.ToUniversalTime());
             count++;
         }
 
@@ -72,8 +75,11 @@ public class Main : MonoBehaviour
 
         if (Keyboard.current.f2Key.wasPressedThisFrame)
         {
+            // get exiftool here: https://exiftool.org/
+            // run this command
+            // perl C:\Image-ExifTool-12.54\exiftool.pl -csv="C:\Users\john\Desktop\TOWER_HOUSE\exterior-original\geo.csv" C:\Users\john\Desktop\TOWER_HOUSE\exterior-original
             Serializer serializer = new Serializer(Path.Combine(PhotoFolderPath, "geo.csv"));
-            serializer.SerializeGeoTag(pics, sceneOffset);
+            serializer.SerializeGeoTag(pics, sceneOffset, picsByDate);
         }
     }
 }
