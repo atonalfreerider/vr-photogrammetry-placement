@@ -2788,6 +2788,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   PhotoFolderPath: C:\Users\john\Desktop\TOWER_HOUSE\exterior-original
+  SceneLongitude: -109.3561
+  ScneneAltitude: 1676.4
+  SceneLatitude: 36.23214
 --- !u!1 &1084074301
 GameObject:
   m_ObjectHideFlags: 0

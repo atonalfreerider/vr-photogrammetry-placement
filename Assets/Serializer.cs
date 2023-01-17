@@ -42,8 +42,7 @@ public class Serializer
         jsonPath = path;
     }
 
-
-    public void Serialize( Dictionary<string, GameObject> pics)
+    public void SerializeCartesian( Dictionary<string, GameObject> pics)
     {
         if (File.Exists(jsonPath))
         {
@@ -60,5 +59,11 @@ public class Serializer
         Debug.Log("Saved to " + jsonPath);
     }
 
-
+    public static Vector3 MeterVector3ToLongitudeAltitudeLatitude(Vector3 meterVector2)
+    {
+        float longitude = meterVector2.x / 111319.9f;
+        float latitude = meterVector2.z / 111319.9f;
+            
+        return new Vector3(longitude, meterVector2.y, latitude);
+    }
 }

@@ -11,6 +11,12 @@ using Rectangle = Shapes.Rectangle;
 public class Main : MonoBehaviour
 {
     public string PhotoFolderPath;
+    public float SceneLongitude;
+    public float ScneneAltitude;
+    public float SceneLatitude;
+
+    Vector3 sceneOffset => new(SceneLongitude, ScneneAltitude, SceneLatitude);
+    
     Serializer serializer;
     string jsonPath => Path.Combine(PhotoFolderPath, "positions.json");
 
@@ -61,7 +67,18 @@ public class Main : MonoBehaviour
     {
         if (Keyboard.current.f1Key.wasPressedThisFrame)
         {
-            serializer.Serialize(pics);
+            serializer.SerializeCartesian(pics);
+        }
+
+        if (Keyboard.current.f2Key.wasPressedThisFrame)
+        {
+            foreach (KeyValuePair<string, GameObject> keyValuePair in pics)
+            {
+                Vector3 longitudeLatitudeAltitude = Serializer.MeterVector3ToLongitudeAltitudeLatitude(keyValuePair.Value.transform.localPosition);
+                longitudeLatitudeAltitude += sceneOffset;
+                
+                Debug.Log(longitudeLatitudeAltitude);
+            }
         }
     }
 }
