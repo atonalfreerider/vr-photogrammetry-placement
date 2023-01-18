@@ -25,6 +25,22 @@ public class Main : MonoBehaviour
     readonly Dictionary<string, GameObject> pics = new();
     readonly Dictionary<string, DateTime> picsByDate = new();
 
+    class ImgMetadata
+    {
+        public readonly float FocalLength;
+        public readonly int Width;
+        public readonly int Height;
+        public readonly string Manufacturer;
+        
+        public ImgMetadata(float focalLength, int width, int height, string manufacturer)
+        {
+            FocalLength = focalLength;
+            Width = width;
+            Height = height;
+            Manufacturer = manufacturer;
+        }
+    }
+
     void Start()
     {
         DirectoryInfo root = new DirectoryInfo(PhotoFolderPath);
@@ -38,17 +54,14 @@ public class Main : MonoBehaviour
             photo.gameObject.SetActive(true);
             photo.gameObject.name = file.FullName;
 
-            Tuple<string, string> ImgSizeAndFocal = GetExifImgSizeAndFocalLength(file.FullName);
-            float focal = float.Parse(ImgSizeAndFocal.Item2.Replace("mm", ""));
-            int height = int.Parse(ImgSizeAndFocal.Item1.Split('x')[1]);
-            int width = int.Parse(ImgSizeAndFocal.Item1.Split('x')[0]);
+            ImgMetadata imgMeta = GetExifImgSizeAndFocalLength(file.FullName);
             
             byte[] bytes = File.ReadAllBytes(file.FullName);
             photo.LoadTexture(bytes);
-            photo.transform.localScale = new Vector3(width, 1, height) * .001f;
+            photo.transform.localScale = new Vector3(imgMeta.Width, 1, imgMeta.Height) * .001f;
             photo.transform.SetParent(container.transform);
             photo.transform.Rotate(Vector3.right, -90);
-            photo.transform.Translate(Vector3.down * focal);
+            photo.transform.Translate(Vector3.down * imgMeta.FocalLength * (imgMeta.Manufacturer == "Apple" ? 1 : 0.5f));
 
             GameObject focalSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             focalSphere.transform.SetParent(container.transform, true);
@@ -96,13 +109,13 @@ public class Main : MonoBehaviour
             // perl C:\Image-ExifTool-12.54\exiftool.pl -csv="C:\Users\john\Desktop\TOWER_HOUSE\exterior-original\geo.csv" C:\Users\john\Desktop\TOWER_HOUSE\exterior-original
             Serializer serializer = new Serializer(Path.Combine(PhotoFolderPath, "geo.csv"));
             serializer.SerializeGeoTag(pics, sceneOffset, picsByDate);
-            WriteGeoData();
+            //WriteGeoData();
         }
     }
 
-    Tuple<string, string> GetExifImgSizeAndFocalLength(string path)
+    ImgMetadata GetExifImgSizeAndFocalLength(string path)
     {
-        string[] args = {ExifToolLocation, "-s", "-ImageSize", "-FocalLength",  path};
+        string[] args = {ExifToolLocation, "-s", "-ImageSize", "-FocalLength", "-CameraMaker",  path};
         ProcessStartInfo processStartInfo = new()
         {
             FileName = "perl",
@@ -120,7 +133,16 @@ public class Main : MonoBehaviour
         process.WaitForExit();
 
         string[] lines = output.Split("\r\n");
-        return new Tuple<string, string>(lines[0][(lines[0].IndexOf(':') + 1)..], lines[1][(lines[1].IndexOf(':') + 1)..]);
+        
+        float focal = float.Parse(lines[1][(lines[1].IndexOf(':') + 1)..].Replace("mm", ""));
+        string widthByHeight = lines[0][(lines[0].IndexOf(':') + 1)..];
+        string manufacturer = lines[2][(lines[2].IndexOf(':') + 1)..];
+        
+        return new ImgMetadata(
+            focal, 
+            int.Parse(widthByHeight.Split('x')[0]),
+            int.Parse(widthByHeight.Split('x')[1]),
+            manufacturer);
     }
 
     void WriteGeoData()
