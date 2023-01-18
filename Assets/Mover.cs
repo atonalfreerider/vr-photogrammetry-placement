@@ -19,28 +19,22 @@ public class Mover : MonoBehaviour
         main = GameObject.Find("Main");
     }
 
-    readonly Dictionary<string, BoxCollider> current = new();
-    BoxCollider child;
+    readonly Dictionary<string, Collider> current = new();
+    Collider child;
 
     void OnTriggerEnter(Collider other)
     {
-        if (other is BoxCollider boxCollider)
+        if (!current.ContainsKey(other.name))
         {
-            if (!current.ContainsKey(other.name))
-            {
-                current.Add(other.name, boxCollider);
-            }
+            current.Add(other.name, other);
         }
     }
 
     void OnTriggerExit(Collider other)
     {
-        if (other is BoxCollider boxCollider)
+        if (current.ContainsKey(other.name))
         {
-            if (current.ContainsKey(boxCollider.name))
-            {
-                current.Remove(boxCollider.name);
-            }
+            current.Remove(other.name);
         }
     }
 
@@ -49,7 +43,7 @@ public class Mover : MonoBehaviour
         if (current.Any())
         {
             child = current.Values.First();
-            child.transform.SetParent(transform);
+            child.transform.parent.SetParent(transform);
         }
     }
 
@@ -57,7 +51,7 @@ public class Mover : MonoBehaviour
     {
         if (child != null)
         {
-            child.transform.SetParent(main.transform);
+            child.transform.parent.SetParent(main.transform);
             child = null;
         }
 
@@ -71,4 +65,4 @@ public class Mover : MonoBehaviour
 
         main.transform.Translate(translation);
     }
-}    
+}

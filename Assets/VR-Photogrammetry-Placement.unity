@@ -2787,10 +2787,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa0aedc006c84f319eb5e0fc0c7e81a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PhotoFolderPath: C:\Users\john\Desktop\TOWER_HOUSE\exterior-original
+  PhotoFolderPath: C:\Users\john\Desktop\TOWER_HOUSE\exterior
   SceneLongitude: -109.3561
   ScneneAltitude: 1676.4
   SceneLatitude: 36.23214
+  ExifToolLocation: C:\\Image-ExifTool-12.54\\exiftool.pl
 --- !u!1 &1084074301
 GameObject:
   m_ObjectHideFlags: 0
