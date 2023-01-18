@@ -30,14 +30,12 @@ public class Main : MonoBehaviour
         public readonly float FocalLength;
         public readonly int Width;
         public readonly int Height;
-        public readonly string Manufacturer;
         
-        public ImgMetadata(float focalLength, int width, int height, string manufacturer)
+        public ImgMetadata(float focalLength, int width, int height)
         {
             FocalLength = focalLength;
             Width = width;
             Height = height;
-            Manufacturer = manufacturer;
         }
     }
 
@@ -61,7 +59,7 @@ public class Main : MonoBehaviour
             photo.transform.localScale = new Vector3(imgMeta.Width, 1, imgMeta.Height) * .001f;
             photo.transform.SetParent(container.transform);
             photo.transform.Rotate(Vector3.right, -90);
-            photo.transform.Translate(Vector3.down * imgMeta.FocalLength * (imgMeta.Manufacturer == "Apple" ? 1 : 0.5f));
+            photo.transform.Translate(Vector3.down * imgMeta.FocalLength * .1f);
 
             GameObject focalSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             focalSphere.transform.SetParent(container.transform, true);
@@ -106,7 +104,7 @@ public class Main : MonoBehaviour
         {
             // get exiftool here: https://exiftool.org/
             // run this command
-            // perl C:\Image-ExifTool-12.54\exiftool.pl -csv="C:\Users\john\Desktop\TOWER_HOUSE\exterior-original\geo.csv" C:\Users\john\Desktop\TOWER_HOUSE\exterior-original
+            // perl C:\Image-ExifTool-12.54\exiftool.pl -csv="C:\Users\john\Desktop\TOWER_HOUSE\exterior\geo.csv" C:\Users\john\Desktop\TOWER_HOUSE\exterior
             Serializer serializer = new Serializer(Path.Combine(PhotoFolderPath, "geo.csv"));
             serializer.SerializeGeoTag(pics, sceneOffset, picsByDate);
             //WriteGeoData();
@@ -115,7 +113,7 @@ public class Main : MonoBehaviour
 
     ImgMetadata GetExifImgSizeAndFocalLength(string path)
     {
-        string[] args = {ExifToolLocation, "-s", "-ImageSize", "-FocalLength", "-CameraMaker",  path};
+        string[] args = {ExifToolLocation, "-s", "-ImageSize", "-FocalLength", "-focallength35efl",  path};
         ProcessStartInfo processStartInfo = new()
         {
             FileName = "perl",
@@ -136,13 +134,18 @@ public class Main : MonoBehaviour
         
         float focal = float.Parse(lines[1][(lines[1].IndexOf(':') + 1)..].Replace("mm", ""));
         string widthByHeight = lines[0][(lines[0].IndexOf(':') + 1)..];
-        string manufacturer = lines[2][(lines[2].IndexOf(':') + 1)..];
-        
+        if(!string.IsNullOrEmpty(lines[2]))
+        {
+            string focal35 = lines[2][(lines[2].IndexOf("equivalent:", StringComparison.Ordinal) + 12)..];
+            focal35 = focal35[..focal35.IndexOf(' ')];
+            focal = float.Parse(focal35);
+        }
+
+
         return new ImgMetadata(
             focal, 
             int.Parse(widthByHeight.Split('x')[0]),
-            int.Parse(widthByHeight.Split('x')[1]),
-            manufacturer);
+            int.Parse(widthByHeight.Split('x')[1]));
     }
 
     void WriteGeoData()
