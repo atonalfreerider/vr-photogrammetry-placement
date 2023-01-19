@@ -25,19 +25,16 @@ public class Main : MonoBehaviour
     readonly Dictionary<string, GameObject> pics = new();
     readonly Dictionary<string, DateTime> picsByDate = new();
 
-    readonly Dictionary<string, NerfSerializer.NerfCamera> cameras = new();
-    readonly Dictionary<string, string> picsToCamera = new();
+    readonly Dictionary<string, ImgMetadata> picsToCamera = new();
 
-    class ImgMetadata
+    public class ImgMetadata
     {
-        public readonly string CameraModel;
         public readonly float FocalLength;
         public readonly int Width;
         public readonly int Height;
 
-        public ImgMetadata(string cameraModel, float focalLength, int width, int height)
+        public ImgMetadata(float focalLength, int width, int height)
         {
-            CameraModel = cameraModel;
             FocalLength = focalLength;
             Width = width;
             Height = height;
@@ -58,16 +55,6 @@ public class Main : MonoBehaviour
             photo.gameObject.name = file.FullName;
 
             ImgMetadata imgMeta = GetExifImgSizeAndFocalLength(file.FullName);
-            string uniqueCameraName = imgMeta.CameraModel + imgMeta.FocalLength;
-            cameras.TryGetValue(uniqueCameraName, out NerfSerializer.NerfCamera nerfCamera);
-            if (nerfCamera == null)
-            {
-                nerfCamera = new NerfSerializer.NerfCamera(
-                    fl_x: imgMeta.FocalLength * 100, fl_y: imgMeta.FocalLength * 100,
-                    cx: imgMeta.Width / 2f, cy: imgMeta.Height / 2f,
-                    w: imgMeta.Width, h: imgMeta.Height);
-                cameras.Add(uniqueCameraName, nerfCamera);
-            }
 
             byte[] bytes = File.ReadAllBytes(file.FullName);
             photo.LoadTexture(bytes);
@@ -85,7 +72,7 @@ public class Main : MonoBehaviour
             pics.Add(file.FullName, container);
             picsByDate.Add(file.FullName, file.CreationTime.ToUniversalTime());
 
-            picsToCamera.Add(file.FullName, uniqueCameraName);
+            picsToCamera.Add(file.FullName, imgMeta);
 
             container.transform.SetParent(transform, false);
             container.transform.Translate(Vector3.back * count * .01f);
@@ -131,7 +118,7 @@ public class Main : MonoBehaviour
         {
             NerfSerializer nerfSerializer =
                 new NerfSerializer(Path.Combine(new DirectoryInfo(PhotoFolderPath).Parent.FullName, "transforms.json"));
-            nerfSerializer.Serialize(cameras, pics, picsToCamera, new DirectoryInfo(PhotoFolderPath).Name);
+            nerfSerializer.Serialize(pics, picsToCamera, new DirectoryInfo(PhotoFolderPath).Name);
         }
     }
 
@@ -169,7 +156,6 @@ public class Main : MonoBehaviour
         string cameraModel = ValueFromExif(lines[3]);
 
         return new ImgMetadata(
-            cameraModel,
             focal,
             int.Parse(widthByHeight.Split('x')[0]),
             int.Parse(widthByHeight.Split('x')[1]));

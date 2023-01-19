@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using UnityEngine;
@@ -12,69 +11,66 @@ public class NerfSerializer
 
     [PublicAPI]
     [Serializable]
-    public class NerfCamera
+    public class Container
     {
-        public float camera_angle_x;
-        public float camera_angle_y;
-        public float fl_x;
-        public float fl_y;
-        public float k1;
-        public float k2;
-        public float k3;
-        public float k4;
-        public float p1;
-        public float p2;
-        public bool is_fisheye = false;
-        public float cx;
-        public float cy;
-        public float w;
-        public float h;
-        public float aabb_scale;
+        public int aabb_scale = 16; // powers of 2 between 1 and 128, defines the bounding box size 
         public List<NerfFrame> frames = new();
-
-        public NerfCamera(
-            float cx = 0, float cy = 0, float w = 0, float h = 0,
-            int aabb_scale = 16, // BUG: made up number 
-            float camera_angle_x = 0, float camera_angle_y = 0,
-            float fl_x = 0, float fl_y = 0,
-            float k1 = 0.5f, // BUG: made up number
-            float k2 = 0, float k3 = 0, float k4 = 0,
-            float p1 = 0.01f, // BUG: made up number
-            float p2 = 0.01f, // BUG: made up number
-            bool is_fisheye = false)
-        {
-            this.cx = cx;
-            this.cy = cy;
-            this.w = w;
-            this.h = h;
-            this.aabb_scale = aabb_scale;
-            this.camera_angle_x = camera_angle_x;
-            this.camera_angle_y = camera_angle_y;
-            this.fl_x = fl_x;
-            this.fl_y = fl_y;
-            this.k1 = k1;
-            this.k2 = k2;
-            this.k3 = k3;
-            this.k4 = k4;
-            this.p1 = p1;
-            this.p2 = p2;
-            this.is_fisheye = is_fisheye;
-        }
     }
 
+    /// <summary>
+    /// from: https://github.com/NVlabs/instant-ngp/pull/1147#issuecomment-1374127391
+    /// </summary>
     [PublicAPI]
     [Serializable]
     public class NerfFrame
     {
         public string file_path;
-        public float sharpness;
+        public float sharpness = 1000f; // 0 to 1000?
         public float[][] transform_matrix;
 
-        public NerfFrame(string file_path, float sharpness, float[][] transform_matrix)
+        public float camera_angle_x = 0f;
+        public float camera_angle_y = 0f;
+
+        // focal lengths for rectangular pixels
+        public float fl_x;
+
+        public float fl_y;
+
+        // these values are used by OPENCV
+        public float k1 = 0f;
+        public float k2 = 0f;
+        public float k3 = 0f;
+
+        public float k4 = 0f;
+
+        // these values are used by OPENCV for distortion
+        public float p1 = 0f;
+        public float p2 = 0f;
+        public bool is_fisheye = false;
+
+        // center of image
+        public float cx;
+        public float cy;
+
+        // dimensions
+        public float w;
+        public float h;
+
+        public NerfFrame(
+            string file_path,
+            float[][] transform_matrix,
+            float w, float h,
+            float fl_x)
         {
             this.file_path = file_path;
-            this.sharpness = sharpness;
             this.transform_matrix = transform_matrix;
+
+            cx = w / 2f;
+            cy = h / 2f;
+            this.w = w;
+            this.h = h;
+            this.fl_x = fl_x;
+            fl_y = fl_x;
         }
     }
 
@@ -84,9 +80,8 @@ public class NerfSerializer
     }
 
     public void Serialize(
-        Dictionary<string, NerfCamera> cameras,
         Dictionary<string, GameObject> pics,
-        Dictionary<string, string> picToCamera,
+        Dictionary<string, Main.ImgMetadata> picToCamera,
         string rootName)
     {
         if (File.Exists(jsonPath))
@@ -94,10 +89,14 @@ public class NerfSerializer
             File.Delete(jsonPath);
         }
 
+        Container container = new();
+
         foreach (KeyValuePair<string, GameObject> keyValuePair in pics)
         {
-            keyValuePair.Value.transform.Rotate(Vector3.up, 180); // BUG: testing
+            //keyValuePair.Value.transform.Rotate(Vector3.up, 180); // BUG: testing
             Matrix4x4 transformMatrix4 = keyValuePair.Value.transform.localToWorldMatrix;
+            transformMatrix4 = LeftHandMatrixFromRightHandMatrix(transformMatrix4);
+
             float[][] transformMatrixArray = new float[4][];
             for (int i = 0; i < 4; i++)
             {
@@ -110,16 +109,28 @@ public class NerfSerializer
 
             NerfFrame nerfFrame = new NerfFrame(
                 $"./{rootName}/{Path.GetFileName(keyValuePair.Key)}",
-                1000f, // BUG: made up number
-                transform_matrix: transformMatrixArray);
+                transformMatrixArray,
+                picToCamera[keyValuePair.Key].Width,
+                picToCamera[keyValuePair.Key].Height,
+                picToCamera[keyValuePair.Key].FocalLength * 100f);
 
-            cameras[picToCamera[keyValuePair.Key]].frames.Add(nerfFrame);
+            container.frames.Add(nerfFrame);
         }
 
         // BUG: only takes first camera
-        string cameraJsonString = JsonConvert.SerializeObject(cameras.Values.ToArray()[0], Formatting.Indented);
+        string cameraJsonString = JsonConvert.SerializeObject(container, Formatting.Indented);
         File.WriteAllText(jsonPath, cameraJsonString);
 
         Debug.Log("Saved to " + jsonPath);
+    }
+
+    static Matrix4x4 LeftHandMatrixFromRightHandMatrix(Matrix4x4 rightHandMatrix)
+    {
+        Matrix4x4 leftHandMatrix = rightHandMatrix;
+        leftHandMatrix.m02 = -rightHandMatrix.m02;
+        leftHandMatrix.m12 = -rightHandMatrix.m12;
+        leftHandMatrix.m22 = -rightHandMatrix.m22;
+        leftHandMatrix.m32 = -rightHandMatrix.m32;
+        return leftHandMatrix;
     }
 }
