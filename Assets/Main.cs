@@ -25,14 +25,19 @@ public class Main : MonoBehaviour
     readonly Dictionary<string, GameObject> pics = new();
     readonly Dictionary<string, DateTime> picsByDate = new();
 
+    readonly Dictionary<string, NerfSerializer.NerfCamera> cameras = new();
+    readonly Dictionary<string, string> picsToCamera = new();
+
     class ImgMetadata
     {
+        public readonly string CameraModel;
         public readonly float FocalLength;
         public readonly int Width;
         public readonly int Height;
-        
-        public ImgMetadata(float focalLength, int width, int height)
+
+        public ImgMetadata(string cameraModel, float focalLength, int width, int height)
         {
+            CameraModel = cameraModel;
             FocalLength = focalLength;
             Width = width;
             Height = height;
@@ -47,13 +52,23 @@ public class Main : MonoBehaviour
         foreach (FileInfo file in root.EnumerateFiles("*.jpg"))
         {
             GameObject container = new(file.FullName);
-            
+
             Rectangle photo = Instantiate(NewCube.textureRectPoly, transform, false);
             photo.gameObject.SetActive(true);
             photo.gameObject.name = file.FullName;
 
             ImgMetadata imgMeta = GetExifImgSizeAndFocalLength(file.FullName);
-            
+            string uniqueCameraName = imgMeta.CameraModel + imgMeta.FocalLength;
+            cameras.TryGetValue(uniqueCameraName, out NerfSerializer.NerfCamera nerfCamera);
+            if (nerfCamera == null)
+            {
+                nerfCamera = new NerfSerializer.NerfCamera(
+                    fl_x: imgMeta.FocalLength * 100, fl_y: imgMeta.FocalLength * 100,
+                    cx: imgMeta.Width / 2f, cy: imgMeta.Height / 2f,
+                    w: imgMeta.Width, h: imgMeta.Height);
+                cameras.Add(uniqueCameraName, nerfCamera);
+            }
+
             byte[] bytes = File.ReadAllBytes(file.FullName);
             photo.LoadTexture(bytes);
             photo.transform.localScale = new Vector3(imgMeta.Width, 1, imgMeta.Height) * .001f;
@@ -69,7 +84,9 @@ public class Main : MonoBehaviour
 
             pics.Add(file.FullName, container);
             picsByDate.Add(file.FullName, file.CreationTime.ToUniversalTime());
-            
+
+            picsToCamera.Add(file.FullName, uniqueCameraName);
+
             container.transform.SetParent(transform, false);
             container.transform.Translate(Vector3.back * count * .01f);
             count++;
@@ -109,11 +126,19 @@ public class Main : MonoBehaviour
             serializer.SerializeGeoTag(pics, sceneOffset, picsByDate);
             //WriteGeoData();
         }
+
+        if (Keyboard.current.f3Key.wasPressedThisFrame)
+        {
+            NerfSerializer nerfSerializer =
+                new NerfSerializer(Path.Combine(new DirectoryInfo(PhotoFolderPath).Parent.FullName, "transforms.json"));
+            nerfSerializer.Serialize(cameras, pics, picsToCamera, new DirectoryInfo(PhotoFolderPath).Name);
+        }
     }
 
     ImgMetadata GetExifImgSizeAndFocalLength(string path)
     {
-        string[] args = {ExifToolLocation, "-s", "-ImageSize", "-FocalLength", "-focallength35efl",  path};
+        string[] args =
+            { ExifToolLocation, "-s", "-ImageSize", "-FocalLength", "-focallength35efl", "-Model", path };
         ProcessStartInfo processStartInfo = new()
         {
             FileName = "perl",
@@ -131,26 +156,33 @@ public class Main : MonoBehaviour
         process.WaitForExit();
 
         string[] lines = output.Split("\r\n");
-        
-        float focal = float.Parse(lines[1][(lines[1].IndexOf(':') + 1)..].Replace("mm", ""));
-        string widthByHeight = lines[0][(lines[0].IndexOf(':') + 1)..];
-        if(!string.IsNullOrEmpty(lines[2]))
+
+        float focal = float.Parse(ValueFromExif(lines[1].Replace("mm", "")));
+        string widthByHeight = ValueFromExif(lines[0]);
+        if (!string.IsNullOrEmpty(lines[2]))
         {
             string focal35 = lines[2][(lines[2].IndexOf("equivalent:", StringComparison.Ordinal) + 12)..];
             focal35 = focal35[..focal35.IndexOf(' ')];
             focal = float.Parse(focal35);
         }
 
+        string cameraModel = ValueFromExif(lines[3]);
 
         return new ImgMetadata(
-            focal, 
+            cameraModel,
+            focal,
             int.Parse(widthByHeight.Split('x')[0]),
             int.Parse(widthByHeight.Split('x')[1]));
     }
 
+    static string ValueFromExif(string exifString)
+    {
+        return exifString[(exifString.IndexOf(':') + 1)..];
+    }
+
     void WriteGeoData()
     {
-        string[] args = {ExifToolLocation, $"-csv=\"{Path.Combine(PhotoFolderPath, "geo.csv")}\"", PhotoFolderPath};
+        string[] args = { ExifToolLocation, $"-csv=\"{Path.Combine(PhotoFolderPath, "geo.csv")}\"", PhotoFolderPath };
         ProcessStartInfo processStartInfo = new()
         {
             FileName = "perl",
