@@ -79,6 +79,9 @@ public class NerfSerializer
         jsonPath = path;
     }
 
+    /// <summary>
+    /// Write the Unity Left Hand Side format to Right Hand Side format to be read by NeRF
+    /// </summary>
     public void Serialize(
         Dictionary<string, GameObject> pics,
         Dictionary<string, Main.ImgMetadata> picToCamera,
@@ -93,13 +96,24 @@ public class NerfSerializer
 
         foreach (KeyValuePair<string, GameObject> keyValuePair in pics)
         {
-            keyValuePair.Value.transform.Rotate(Vector3.left * 90f);
-            Matrix4x4 transformMatrix4 = keyValuePair.Value.transform.localToWorldMatrix;
-            Vector3 pos = transformMatrix4.GetColumn(3);
-            pos = new Vector3(pos.x, pos.z, pos.y);
-            transformMatrix4 = transformMatrix4.inverse;
+            Transform picTrans = keyValuePair.Value.transform;
+            
+            // rotate and then invert the camera
+            // BUG: this is not working even though the test matrix comes back correct
+            picTrans.Rotate(Vector3.left * 90f);
+            picTrans.rotation = Quaternion.Inverse(picTrans.rotation);
+            
+            // get the matrix
+            Matrix4x4 transformMatrix4 = picTrans.localToWorldMatrix;
+            
+            // flip z and y in the position
+            Vector4 pos = transformMatrix4.GetColumn(3);
+            pos = new Vector4(pos.x, pos.z, pos.y, pos.w);
+            
+            // overwrite the position in the matrix
             transformMatrix4.SetColumn(3, pos);
 
+            // save the matrix to a jagged array
             float[][] transformMatrixArray = new float[4][];
             for (int i = 0; i < 4; i++)
             {
@@ -110,12 +124,13 @@ public class NerfSerializer
                 }
             }
 
+            Main.ImgMetadata picMeta = picToCamera[keyValuePair.Key];
             NerfFrame nerfFrame = new NerfFrame(
                 $"./{rootName}/{Path.GetFileName(keyValuePair.Key)}",
                 transformMatrixArray,
-                picToCamera[keyValuePair.Key].Width,
-                picToCamera[keyValuePair.Key].Height,
-                picToCamera[keyValuePair.Key].FocalLength * 100f);
+                picMeta.Width,
+                picMeta.Height,
+                picMeta.FocalLength * 100f);
 
             container.frames.Add(nerfFrame);
         }
@@ -124,15 +139,46 @@ public class NerfSerializer
         File.WriteAllText(jsonPath, cameraJsonString);
 
         Debug.Log("Saved to " + jsonPath);
+        
+        // test the matrix
+        DoDeserialize(jsonPath);
     }
 
-    static Matrix4x4 LeftHandMatrixFromRightHandMatrix(Matrix4x4 rightHandMatrix)
+    public static void DoDeserialize(string path)
     {
-        Matrix4x4 leftHandMatrix = rightHandMatrix;
-        leftHandMatrix.m02 = -rightHandMatrix.m02;
-        leftHandMatrix.m12 = -rightHandMatrix.m12;
-        leftHandMatrix.m22 = -rightHandMatrix.m22;
-        leftHandMatrix.m32 = -rightHandMatrix.m32;
-        return leftHandMatrix;
+        string jsonString = File.ReadAllText(path);
+        Container container = JsonConvert.DeserializeObject<Container>(jsonString);
+        foreach (NerfFrame frame in container.frames)
+        {
+            Matrix4x4 matrix4X4 = Matrix4X4fromFloatArray(frame.transform_matrix);
+
+            GameObject flat = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            flat.name = frame.file_path;
+            SetTransformPositionRotationFrommMatrix4X4(flat.transform, matrix4X4);
+        }
+    }
+
+    static void SetTransformPositionRotationFrommMatrix4X4(Transform transform, Matrix4x4 matrix4X4)
+    {
+        Vector3 pos = matrix4X4.GetColumn(3);
+        pos = new Vector3(pos.x, pos.z, pos.y);
+        transform.position = pos;
+
+        transform.rotation = matrix4X4.inverse.rotation;
+        transform.Rotate(Vector3.right, 90);
+    }
+
+    static Matrix4x4 Matrix4X4fromFloatArray(float[][] array)
+    {
+        Matrix4x4 matrix4X4 = new Matrix4x4();
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                matrix4X4[i, j] = array[i][j];
+            }
+        }
+
+        return matrix4X4;
     }
 }
