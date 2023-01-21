@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using JetBrains.Annotations;
@@ -93,9 +93,12 @@ public class NerfSerializer
 
         foreach (KeyValuePair<string, GameObject> keyValuePair in pics)
         {
-            //keyValuePair.Value.transform.Rotate(Vector3.up, 180); // BUG: testing
+            keyValuePair.Value.transform.Rotate(Vector3.left * 90f);
             Matrix4x4 transformMatrix4 = keyValuePair.Value.transform.localToWorldMatrix;
-            transformMatrix4 = LeftHandMatrixFromRightHandMatrix(transformMatrix4);
+            Vector3 pos = transformMatrix4.GetColumn(3);
+            pos = new Vector3(pos.x, pos.z, pos.y);
+            transformMatrix4 = transformMatrix4.inverse;
+            transformMatrix4.SetColumn(3, pos);
 
             float[][] transformMatrixArray = new float[4][];
             for (int i = 0; i < 4; i++)
@@ -117,7 +120,6 @@ public class NerfSerializer
             container.frames.Add(nerfFrame);
         }
 
-        // BUG: only takes first camera
         string cameraJsonString = JsonConvert.SerializeObject(container, Formatting.Indented);
         File.WriteAllText(jsonPath, cameraJsonString);
 
