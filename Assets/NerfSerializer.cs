@@ -70,7 +70,7 @@ public class NerfSerializer
             this.w = w;
             this.h = h;
             this.fl_x = fl_x;
-            fl_y = fl_x;
+            fl_y = fl_x * h / w;
         }
     }
 
@@ -101,17 +101,11 @@ public class NerfSerializer
             // rotate and then invert the camera
             // BUG: this is not working even though the test matrix comes back correct
             picTrans.Rotate(Vector3.left * 90f);
-            picTrans.rotation = Quaternion.Inverse(picTrans.rotation);
             
             // get the matrix
-            Matrix4x4 transformMatrix4 = picTrans.localToWorldMatrix;
-            
-            // flip z and y in the position
-            Vector4 pos = transformMatrix4.GetColumn(3);
-            pos = new Vector4(pos.x, pos.z, pos.y, pos.w);
-            
-            // overwrite the position in the matrix
-            transformMatrix4.SetColumn(3, pos);
+            //Matrix4x4 matrix = picTrans.localToWorldMatrix; // either should work
+            Matrix4x4 transformMatrix4 =  Matrix4x4.TRS(picTrans.position, picTrans.rotation, Vector3.one);
+            transformMatrix4 = ChangeHand(transformMatrix4);
 
             // save the matrix to a jagged array
             float[][] transformMatrixArray = new float[4][];
@@ -154,18 +148,25 @@ public class NerfSerializer
 
             GameObject flat = GameObject.CreatePrimitive(PrimitiveType.Cube);
             flat.name = frame.file_path;
-            SetTransformPositionRotationFrommMatrix4X4(flat.transform, matrix4X4);
+            matrix4X4 = ChangeHand(matrix4X4);
+            flat.transform.position = matrix4X4.GetPosition();
+            flat.transform.rotation = matrix4X4.rotation;
+            flat.transform.Rotate(Vector3.right * 90f);
         }
     }
 
-    static void SetTransformPositionRotationFrommMatrix4X4(Transform transform, Matrix4x4 matrix4X4)
+    /// <summary>
+    /// Reversable transformation between LHS (UNITY) abd RHS (NeRF)
+    /// </summary>
+    /// <param name="matrix4X4"></param>
+    /// <returns></returns>
+    static Matrix4x4 ChangeHand(Matrix4x4 matrix4X4)
     {
-        Vector3 pos = matrix4X4.GetColumn(3);
-        pos = new Vector3(pos.x, pos.z, pos.y);
-        transform.position = pos;
-
-        transform.rotation = matrix4X4.inverse.rotation;
-        transform.Rotate(Vector3.right, 90);
+        return new Matrix4x4(
+            new Vector4(matrix4X4.m00, matrix4X4.m01, matrix4X4.m02, matrix4X4.m30),
+            new Vector4(matrix4X4.m10, matrix4X4.m11, matrix4X4.m12, matrix4X4.m31),
+            new Vector4(matrix4X4.m20, matrix4X4.m21, matrix4X4.m22, matrix4X4.m32),
+            new Vector4(matrix4X4.m03, matrix4X4.m23, matrix4X4.m13, matrix4X4.m33));
     }
 
     static Matrix4x4 Matrix4X4fromFloatArray(float[][] array)

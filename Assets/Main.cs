@@ -43,6 +43,10 @@ public class Main : MonoBehaviour
 
     void Start()
     {
+        //NerfSerializer.DoDeserialize(@"C:\Users\john\Desktop\christmas-tree\transforms.json");
+
+        //return;
+        
         DirectoryInfo root = new DirectoryInfo(PhotoFolderPath);
 
         int count = 0;
