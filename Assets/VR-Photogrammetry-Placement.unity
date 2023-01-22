@@ -2806,6 +2806,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   videoFolder: C:\Users\john\Desktop\Carlos-Aline\spin-video
+  humanExistThreshold: 0.5
+  visualizerShader: {fileID: 4800000, guid: b29335458cdea94419fa83a46bbdb12c, type: 3}
+  sdkManager: {fileID: 675674842}
 --- !u!1 &1084074301
 GameObject:
   m_ObjectHideFlags: 0
