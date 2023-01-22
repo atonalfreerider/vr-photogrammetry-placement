@@ -152,7 +152,7 @@ public class NerfSerializer
     /// </summary>
     /// <param name="matrix4X4"></param>
     /// <returns></returns>
-    static Matrix4x4 ChangeHand(Matrix4x4 matrix4X4)
+    public static Matrix4x4 ChangeHand(Matrix4x4 matrix4X4)
     {
         return new Matrix4x4(
             new Vector4(matrix4X4.m00, matrix4X4.m01, matrix4X4.m02, matrix4X4.m30),

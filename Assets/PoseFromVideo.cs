@@ -1,8 +1,11 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Mediapipe.BlazePose;
+using PclSharp;
+using PclSharp.Std;
+using PclSharp.Struct;
 using UnityEngine;
 using UnityEngine.Video;
 
@@ -21,6 +24,8 @@ public class PoseFromVideo : MonoBehaviour
     readonly Dictionary<string, Dictionary<int, GameObject>> posePointsByCam = new();
     readonly Dictionary<string, GameObject> bodyContainersByCam = new();
 
+    Coroutine stepper;
+
     void Start()
     {
         DirectoryInfo root = new DirectoryInfo(videoFolder);
@@ -29,9 +34,9 @@ public class PoseFromVideo : MonoBehaviour
         int count = 0;
         foreach (FileInfo file in root.EnumerateFiles("*.mp4"))
         {
-            BlazePoseDetecter detector =  new BlazePoseDetecter();
+            BlazePoseDetecter detector = new BlazePoseDetecter();
             detectorByCam.Add(file.FullName, detector);
-            
+
             GameObject systemContainer = new(file.FullName);
             systemContainerByCam.Add(file.FullName, systemContainer);
 
@@ -83,24 +88,32 @@ public class PoseFromVideo : MonoBehaviour
             count++;
         }
 
-        StartCoroutine(Step());
+        stepper = StartCoroutine(Step());
     }
 
     IEnumerator Step()
     {
+        int count = 0;
+        string baseFilePath = playerByCam.First().Key;
         foreach (KeyValuePair<string, VideoPlayer> kvp in playerByCam)
         {
             kvp.Value.StepForward();
 
             ExtractFrame(kvp.Key);
+            if (count > 0)
+            {
+                Matrix4x4 alignmentMatrix = Align(baseFilePath, kvp.Key);
+                //alignmentMatrix = NerfSerializer.ChangeHand(alignmentMatrix);
+                systemContainerByCam[kvp.Key].transform.FromMatrix(alignmentMatrix);
+            }
 
-            yield return new WaitForSeconds(.2f);
+            count++;
         }
 
-        yield return new WaitForSeconds(.2f);
-        StartCoroutine(Step());
+        //yield return new WaitForSeconds(.2f);
+        yield return null;
+        stepper = StartCoroutine(Step());
     }
-
 
     void ExtractFrame(string filePath)
     {
@@ -119,9 +132,87 @@ public class PoseFromVideo : MonoBehaviour
         }
     }
 
-    void Align()
+    Matrix4x4 Align(string baseFile, string alignFile)
     {
-        
+        PclSharp.Registration.IterativeClosestPointOfPointXYZ_PointXYZ icp = new();
+
+        icp.MaximumIterations = 1000;
+        icp.MaxCorrespondenceDistance = 0.5d;
+        icp.TransformationEpsilon = 1e-8d;
+        //icp.TransformationRotationEpsilon = 1e-8d;
+        icp.EuclideanFitnessEpsilon = 1e-8d;
+        icp.RANSACOutlierRejectionThreshold = 0.25d;
+
+        PointCloudOfXYZ basePointCloud = new();
+        VectorOfInt baseIndices = new();
+
+        // do each
+        foreach (KeyValuePair<int, GameObject> pointAndIndex in posePointsByCam[baseFile])
+        {
+            baseIndices.Add(pointAndIndex.Key);
+            Vector3 pos = pointAndIndex.Value.transform.localPosition;
+            PointXYZ point = new PointXYZ
+            {
+                X = pos.x,
+                Y = pos.y,
+                Z = pos.z
+            };
+            basePointCloud.Add(point);
+        }
+
+        icp.SetInputCloud(basePointCloud);
+        icp.SetIndices(baseIndices);
+
+        PointCloudOfXYZ toAlign = new();
+
+        // do each
+        foreach (KeyValuePair<int, GameObject> pointAndIndex in posePointsByCam[alignFile])
+        {
+            Vector3 pos = pointAndIndex.Value.transform.localPosition;
+            PointXYZ point = new PointXYZ
+            {
+                X = pos.x,
+                Y = pos.y,
+                Z = pos.z
+            };
+            toAlign.Add(point);
+        }
+
+        icp.InputTarget = toAlign;
+
+        PointCloudOfXYZ aligned = new();
+        icp.Align(aligned);
+
+        PclSharp.Eigen.Matrix4f trans = icp.FinalTransformation;
+
+        Matrix4x4 matrix = new Matrix4x4
+        {
+            m00 = trans[0, 0],
+            m01 = trans[0, 1],
+            m02 = trans[0, 2],
+            m03 = trans[0, 3],
+            m10 = trans[1, 0],
+            m11 = trans[1, 1],
+            m12 = trans[1, 2],
+            m13 = trans[1, 3],
+            m20 = trans[2, 0],
+            m21 = trans[2, 1],
+            m22 = trans[2, 2],
+            m23 = trans[2, 3],
+            m30 = trans[3, 0],
+            m31 = trans[3, 1],
+            m32 = trans[3, 2],
+            m33 = trans[3, 3]
+        };
+
+        icp.Dispose();
+        basePointCloud.Dispose();
+        baseIndices.Dispose();
+        toAlign.Dispose();
+        aligned.Dispose();
+        trans.Dispose();
+
+        return matrix;
     }
 
     void OnApplicationQuit()
@@ -130,5 +221,51 @@ public class PoseFromVideo : MonoBehaviour
         {
             kvp.Value.Dispose();
         }
+    }
+}
+
+public static class TransformExtensions
+{
+    public static void FromMatrix(this Transform transform, Matrix4x4 matrix)
+    {
+        transform.localScale = matrix.ExtractScale();
+        transform.rotation = matrix.ExtractRotation();
+        transform.position = matrix.ExtractPosition();
+    }
+}
+
+public static class MatrixExtensions
+{
+    public static Quaternion ExtractRotation(this Matrix4x4 matrix)
+    {
+        Vector3 forward;
+        forward.x = matrix.m02;
+        forward.y = matrix.m12;
+        forward.z = matrix.m22;
+
+        Vector3 upwards;
+        upwards.x = matrix.m01;
+        upwards.y = matrix.m11;
+        upwards.z = matrix.m21;
+
+        return Quaternion.LookRotation(forward, upwards);
+    }
+
+    public static Vector3 ExtractPosition(this Matrix4x4 matrix)
+    {
+        Vector3 position;
+        position.x = matrix.m03;
+        position.y = matrix.m13;
+        position.z = matrix.m23;
+        return position;
+    }
+
+    public static Vector3 ExtractScale(this Matrix4x4 matrix)
+    {
+        Vector3 scale;
+        scale.x = new Vector4(matrix.m00, matrix.m10, matrix.m20, matrix.m30).magnitude;
+        scale.y = new Vector4(matrix.m01, matrix.m11, matrix.m21, matrix.m31).magnitude;
+        scale.z = new Vector4(matrix.m02, matrix.m12, matrix.m22, matrix.m32).magnitude;
+        return scale;
     }
 }
