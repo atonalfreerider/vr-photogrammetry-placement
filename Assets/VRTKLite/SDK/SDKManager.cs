@@ -66,12 +66,8 @@ namespace VRTKLite.SDK
             remove => loadedVRSetupChanged -= value;
         }
 
-        public static SDKManager Instance;
-
         void Start()
         {
-            Instance = this;
-            
             // iterate through setups
             List<XRInputSubsystem> xrInputSubsystems = new List<XRInputSubsystem>();
             SubsystemManager.GetInstances(xrInputSubsystems);
