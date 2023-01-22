@@ -45,8 +45,15 @@ public class Main : MonoBehaviour
     {
         //NerfSerializer.DoDeserialize(@"C:\Users\john\Desktop\christmas-tree\transforms.json");
 
-        //return;
-        
+        //Colmap2Nerf colmap2Nerf = new Colmap2Nerf(@"C:\Users\john\Desktop\Carlos-Aline");
+        //colmap2Nerf.Convert();
+        //NerfSerializer.DoDeserialize(@"C:\Users\john\Desktop\Carlos-Aline\transforms.json");
+
+        //LoadPhotos();
+    }
+
+    void LoadPhotos()
+    {
         DirectoryInfo root = new DirectoryInfo(PhotoFolderPath);
 
         int count = 0;
