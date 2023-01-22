@@ -108,15 +108,7 @@ public class NerfSerializer
             transformMatrix4 = ChangeHand(transformMatrix4);
 
             // save the matrix to a jagged array
-            float[][] transformMatrixArray = new float[4][];
-            for (int i = 0; i < 4; i++)
-            {
-                transformMatrixArray[i] = new float[4];
-                for (int j = 0; j < 4; j++)
-                {
-                    transformMatrixArray[i][j] = transformMatrix4[i, j];
-                }
-            }
+            float[][] transformMatrixArray = Matrix4X4toFloatArray(transformMatrix4);
 
             Main.ImgMetadata picMeta = picToCamera[keyValuePair.Key];
             NerfFrame nerfFrame = new NerfFrame(
@@ -181,5 +173,20 @@ public class NerfSerializer
         }
 
         return matrix4X4;
+    }
+    
+    public static float[][] Matrix4X4toFloatArray(Matrix4x4 matrix4X4)
+    {
+        float[][] array = new float[4][];
+        for (int i = 0; i < 4; i++)
+        {
+            array[i] = new float[4];
+            for (int j = 0; j < 4; j++)
+            {
+                array[i][j] = matrix4X4[i, j];
+            }
+        }
+
+        return array;
     }
 }
