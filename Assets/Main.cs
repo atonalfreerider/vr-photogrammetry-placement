@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using Shapes;
 using UnityEngine;
@@ -50,7 +51,7 @@ public class Main : MonoBehaviour
         DirectoryInfo root = new DirectoryInfo(PhotoFolderPath);
 
         int count = 0;
-        foreach (FileInfo file in root.EnumerateFiles("*.jpg"))
+        foreach (FileInfo file in root.EnumerateFiles("*.png").Concat(root.EnumerateFiles("*.jpg")))
         {
             GameObject container = new(file.FullName);
 
@@ -148,16 +149,23 @@ public class Main : MonoBehaviour
 
         string[] lines = output.Split("\r\n");
 
-        float focal = float.Parse(ValueFromExif(lines[1].Replace("mm", "")));
+        string focalString = lines[1].Replace("mm", "");
+
+        float focal = 28;
+        if (!string.IsNullOrEmpty(focalString))
+        {
+            focal = float.Parse(ValueFromExif(focalString));
+        }
+
         string widthByHeight = ValueFromExif(lines[0]);
-        if (!string.IsNullOrEmpty(lines[2]))
+        if (lines.Length > 2 && !string.IsNullOrEmpty(lines[2]))
         {
             string focal35 = lines[2][(lines[2].IndexOf("equivalent:", StringComparison.Ordinal) + 12)..];
             focal35 = focal35[..focal35.IndexOf(' ')];
             focal = float.Parse(focal35);
         }
 
-        string cameraModel = ValueFromExif(lines[3]);
+        // string cameraModel = ValueFromExif(lines[3]);
 
         return new ImgMetadata(
             focal,
