@@ -9,7 +9,6 @@ using CsvHelper.Configuration;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using UnityEngine;
-using File = UnityEngine.Windows.File;
 
 [Serializable]
 public class PositionAndRotation

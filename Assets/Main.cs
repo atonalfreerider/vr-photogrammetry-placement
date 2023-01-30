@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+
+#if !UNITY_ANDROID
 using System.Drawing;
+#endif
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
@@ -10,7 +13,6 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using Color = UnityEngine.Color;
 using Debug = UnityEngine.Debug;
-using File = UnityEngine.Windows.File;
 using Rectangle = Shapes.Rectangle;
 
 public class Main : MonoBehaviour
@@ -111,11 +113,13 @@ public class Main : MonoBehaviour
         {
             imgMeta = GetExifImgSizeAndFocalLength(imageName);
         }
+#if !UNITY_ANDROID
         else if (File.Exists(imageName))
         {
             Bitmap bitmap = new Bitmap(imageName);
             imgMeta = new ImgMetadata(28, bitmap.Width, bitmap.Height);
         }
+#endif
         else if (texture2D != null)
         {
             imgMeta = new ImgMetadata(28, texture2D.width * 2, texture2D.height * 2);
