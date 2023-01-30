@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using Shapes;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Color = UnityEngine.Color;
 using Debug = UnityEngine.Debug;
 using File = UnityEngine.Windows.File;
 using Rectangle = Shapes.Rectangle;
@@ -45,66 +46,107 @@ public class Main : MonoBehaviour
 
     void Start()
     {
-        DirectoryInfo root = new DirectoryInfo(PhotoFolderPath);
-
-        int count = 0;
-        foreach (FileInfo file in root.EnumerateFiles("*.png").Concat(root.EnumerateFiles("*.jpg")))
+        if (!string.IsNullOrEmpty(PhotoFolderPath))
         {
-            GameObject container = new(file.FullName);
+            DirectoryInfo root = new DirectoryInfo(PhotoFolderPath);
 
-            Rectangle photo = Instantiate(NewCube.textureRectPoly, transform, false);
-            photo.gameObject.SetActive(true);
-            photo.gameObject.name = file.FullName;
-
-            ImgMetadata imgMeta = null;
-            if (!string.IsNullOrEmpty(ExifToolLocation))
+            int count = 0;
+            foreach (FileInfo file in root.EnumerateFiles("*.png").Concat(root.EnumerateFiles("*.jpg")))
             {
-                imgMeta = GetExifImgSizeAndFocalLength(file.FullName);
+                GameObject container = PhotoFromImage(
+                    file.FullName,
+                    file.CreationTime.ToUniversalTime(),
+                    File.ReadAllBytes(file.FullName));
+                container.transform.SetParent(transform, false);
+                container.transform.Translate(Vector3.back * count * .01f);
+                count++;
             }
-            else
+        }
+        else
+        {
+            int count = 0;
+            foreach (Texture2D image in Resources.LoadAll<Texture2D>("Textures"))
             {
-                Bitmap bitmap = new Bitmap(file.FullName);
-                imgMeta = new ImgMetadata(28, bitmap.Width, bitmap.Height);
+                GameObject container = PhotoFromImage(image.name, DateTime.Now, null, image);
+                container.transform.SetParent(transform, false);
+                container.transform.Translate(Vector3.back * count * .01f);
+                count++;
             }
-
-            byte[] bytes = File.ReadAllBytes(file.FullName);
-            photo.LoadTexture(bytes);
-            photo.transform.localScale = new Vector3(imgMeta.Width, 1, imgMeta.Height) * .001f;
-            photo.transform.SetParent(container.transform);
-            photo.transform.Rotate(Vector3.right, -90);
-            photo.transform.Translate(Vector3.down * imgMeta.FocalLength * .1f);
-
-            GameObject focalSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            focalSphere.transform.SetParent(container.transform, true);
-            focalSphere.transform.localScale = Vector3.one * .1f;
-            focalSphere.GetComponent<SphereCollider>().isTrigger = true;
-            focalSphere.GetComponent<SphereCollider>().radius = 3f;
-
-            pics.Add(file.FullName, container);
-            picsByDate.Add(file.FullName, file.CreationTime.ToUniversalTime());
-
-            picsToCamera.Add(file.FullName, imgMeta);
-
-            container.transform.SetParent(transform, false);
-            container.transform.Translate(Vector3.back * count * .01f);
-            count++;
         }
 
+        string json;
         if (File.Exists(jsonPath))
         {
-            string json = System.IO.File.ReadAllText(jsonPath);
-            Dictionary<string, PositionAndRotation> fromJsonPics =
-                JsonConvert.DeserializeObject<Dictionary<string, PositionAndRotation>>(json);
-
-            foreach (KeyValuePair<string, PositionAndRotation> positionAndRotation in fromJsonPics)
-            {
-                GameObject container = pics[positionAndRotation.Key];
-                container.transform.localPosition =
-                    positionAndRotation.Value.positionVector3;
-                container.transform.localRotation =
-                    positionAndRotation.Value.rotationQuaternion;
-            }
+            json = System.IO.File.ReadAllText(jsonPath);
         }
+        else
+        {
+            TextAsset jsonPositions = Resources.Load<TextAsset>("positions");
+            json = jsonPositions.text;
+        }
+
+        Dictionary<string, PositionAndRotation> fromJsonPics =
+            JsonConvert.DeserializeObject<Dictionary<string, PositionAndRotation>>(json);
+
+        foreach (KeyValuePair<string, PositionAndRotation> positionAndRotation in fromJsonPics)
+        {
+            GameObject container = pics[positionAndRotation.Key];
+            container.transform.localPosition =
+                positionAndRotation.Value.positionVector3;
+            container.transform.localRotation =
+                positionAndRotation.Value.rotationQuaternion;
+        }
+    }
+
+    GameObject PhotoFromImage(string imageName, DateTime creationTime, byte[] bytes = null, Texture2D texture2D = null)
+    {
+        GameObject container = new(imageName);
+
+        Rectangle photo = Instantiate(NewCube.textureRectPoly, transform, false);
+        photo.gameObject.SetActive(true);
+        photo.gameObject.name = imageName;
+
+        ImgMetadata imgMeta = null;
+        if (!string.IsNullOrEmpty(ExifToolLocation))
+        {
+            imgMeta = GetExifImgSizeAndFocalLength(imageName);
+        }
+        else if (File.Exists(imageName))
+        {
+            Bitmap bitmap = new Bitmap(imageName);
+            imgMeta = new ImgMetadata(28, bitmap.Width, bitmap.Height);
+        }
+        else if (texture2D != null)
+        {
+            imgMeta = new ImgMetadata(28, texture2D.width, texture2D.height);
+        }
+
+        if (bytes != null)
+        {
+            photo.LoadTexture(bytes);
+        }
+        else if (texture2D != null)
+        {
+            photo.rend.material.SetTexture(Shader.PropertyToID("_MainTex"), texture2D);
+            photo.rend.material.color = new Color(1, 1, 1, .5f);
+        }
+
+        photo.transform.localScale = new Vector3(imgMeta.Width, 1, imgMeta.Height) * .001f;
+        photo.transform.SetParent(container.transform);
+        photo.transform.Rotate(Vector3.right, -90);
+        photo.transform.Translate(Vector3.down * imgMeta.FocalLength * .1f);
+
+        GameObject focalSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        focalSphere.transform.SetParent(container.transform, true);
+        focalSphere.transform.localScale = Vector3.one * .1f;
+        focalSphere.GetComponent<SphereCollider>().isTrigger = true;
+        focalSphere.GetComponent<SphereCollider>().radius = 3f;
+
+        pics.Add(imageName, container);
+        picsByDate.Add(imageName, creationTime);
+
+        picsToCamera.Add(imageName, imgMeta);
+        return container;
     }
 
     void Update()
