@@ -2126,6 +2126,7 @@ GameObject:
   m_Component:
   - component: {fileID: 784952265}
   - component: {fileID: 784952266}
+  - component: {fileID: 784952267}
   m_Layer: 0
   m_Name: Simulator
   m_TagString: Untagged
@@ -2161,6 +2162,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 114105e95b2f479484dc0f10a262c692, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &784952267
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 784952264}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d04713b9c86ee7429bc1ab4a565c272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SensitivityX: 15
+  SensitivityY: 15
+  MinimumXRotation: -360
+  MaximumXRotation: 360
+  MinimumYRotation: -60
+  MaximumYRotation: 60
 --- !u!1 &796103440
 GameObject:
   m_ObjectHideFlags: 0
@@ -2854,7 +2873,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa0aedc006c84f319eb5e0fc0c7e81a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PhotoFolderPath: C:\Users\john\Desktop\TOWER_HOUSE\exterior
+  PhotoFolderPath: 
   SceneLongitude: -109.3561
   ScneneAltitude: 1676.4
   SceneLatitude: 36.23214

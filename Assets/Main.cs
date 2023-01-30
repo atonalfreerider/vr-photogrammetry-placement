@@ -118,7 +118,7 @@ public class Main : MonoBehaviour
         }
         else if (texture2D != null)
         {
-            imgMeta = new ImgMetadata(28, texture2D.width, texture2D.height);
+            imgMeta = new ImgMetadata(28, texture2D.width * 2, texture2D.height * 2);
         }
 
         if (bytes != null)
