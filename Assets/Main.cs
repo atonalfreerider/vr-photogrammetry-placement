@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
@@ -44,10 +45,6 @@ public class Main : MonoBehaviour
 
     void Start()
     {
-        //NerfSerializer.DoDeserialize(@"C:\Users\john\Desktop\christmas-tree\transforms.json");
-
-        //return;
-        
         DirectoryInfo root = new DirectoryInfo(PhotoFolderPath);
 
         int count = 0;
@@ -59,7 +56,16 @@ public class Main : MonoBehaviour
             photo.gameObject.SetActive(true);
             photo.gameObject.name = file.FullName;
 
-            ImgMetadata imgMeta = GetExifImgSizeAndFocalLength(file.FullName);
+            ImgMetadata imgMeta = null;
+            if (!string.IsNullOrEmpty(ExifToolLocation))
+            {
+                imgMeta = GetExifImgSizeAndFocalLength(file.FullName);
+            }
+            else
+            {
+                Bitmap bitmap = new Bitmap(file.FullName);
+                imgMeta = new ImgMetadata(28, bitmap.Width, bitmap.Height);
+            }
 
             byte[] bytes = File.ReadAllBytes(file.FullName);
             photo.LoadTexture(bytes);

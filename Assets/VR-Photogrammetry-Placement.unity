@@ -2858,7 +2858,7 @@ MonoBehaviour:
   SceneLongitude: -109.3561
   ScneneAltitude: 1676.4
   SceneLatitude: 36.23214
-  ExifToolLocation: C:\\Image-ExifTool-12.54\\exiftool.pl
+  ExifToolLocation: 
 --- !u!1 &1084074301
 GameObject:
   m_ObjectHideFlags: 0
