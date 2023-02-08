@@ -39,7 +39,7 @@ public class Colmap2Nerf
         string camerasTxt = File.ReadAllText(ColmapFolder + "/cameras.txt");
         Dictionary<string, CamData> cameras = new Dictionary<string, CamData>();
 
-        string[] cameraLines = camerasTxt.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+        string[] cameraLines = camerasTxt.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
         foreach (string cameraLine in cameraLines)
         {
             if (cameraLine.StartsWith('#')) continue;
@@ -59,7 +59,7 @@ public class Colmap2Nerf
         // read images.txt
         string imagesTxt = File.ReadAllText(ColmapFolder + "/images.txt");
 
-        string[] lines = imagesTxt.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+        string[] lines = imagesTxt.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
 
         List<NerfSerializer.NerfFrame> frames = new();
         foreach (string line in lines)

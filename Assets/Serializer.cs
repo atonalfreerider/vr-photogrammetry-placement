@@ -106,7 +106,7 @@ public class Serializer
                 x.Value.transform.localRotation.eulerAngles));
 
         string dictionaryString = JsonConvert.SerializeObject(picsPos, Formatting.Indented);
-        System.IO.File.WriteAllText(jsonPath, dictionaryString);
+        File.WriteAllText(jsonPath, dictionaryString);
 
         Debug.Log("Saved to " + jsonPath);
     }

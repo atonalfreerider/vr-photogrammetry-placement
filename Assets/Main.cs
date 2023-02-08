@@ -1,19 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-
-#if !UNITY_ANDROID
-using System.Drawing;
-#endif
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
 using Shapes;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using Color = UnityEngine.Color;
 using Debug = UnityEngine.Debug;
-using Rectangle = Shapes.Rectangle;
+#if !UNITY_ANDROID
+using System.Drawing;
+#endif
 
 public class Main : MonoBehaviour
 {
@@ -79,12 +76,12 @@ public class Main : MonoBehaviour
         string json;
         if (File.Exists(jsonPath))
         {
-            json = System.IO.File.ReadAllText(jsonPath);
+            json = File.ReadAllText(jsonPath);
         }
         else
         {
             TextAsset jsonPositions = Resources.Load<TextAsset>("positions");
-            json = jsonPositions.text;
+            json = jsonPositions != null ? jsonPositions.text : "{}";
         }
 
         Dictionary<string, PositionAndRotation> fromJsonPics =
