@@ -7,7 +7,9 @@ using Newtonsoft.Json;
 using Shapes;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Color = UnityEngine.Color;
 using Debug = UnityEngine.Debug;
+using Rectangle = Shapes.Rectangle;
 #if !UNITY_ANDROID
 using System.Drawing;
 #endif
