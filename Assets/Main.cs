@@ -16,7 +16,9 @@ using System.Drawing;
 
 public class Main : MonoBehaviour
 {
+    [Header("Parameters")]
     public string PhotoFolderPath;
+    public float DefaultFocalLength;
     public float SceneLongitude;
     public float ScneneAltitude;
     public float SceneLatitude;
@@ -116,12 +118,12 @@ public class Main : MonoBehaviour
         else if (File.Exists(imageName))
         {
             Bitmap bitmap = new Bitmap(imageName);
-            imgMeta = new ImgMetadata(28, bitmap.Width, bitmap.Height);
+            imgMeta = new ImgMetadata(DefaultFocalLength, bitmap.Width, bitmap.Height);
         }
 #endif
         else if (texture2D != null)
         {
-            imgMeta = new ImgMetadata(28, texture2D.width * 2, texture2D.height * 2);
+            imgMeta = new ImgMetadata(DefaultFocalLength, texture2D.width * 2, texture2D.height * 2);
         }
 
         if (bytes != null)
