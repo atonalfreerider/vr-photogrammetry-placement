@@ -63,3 +63,8 @@ crashlytics-build.properties
 
 .idea
 UserSettings
+
+Assets/Packages
+Assets/Packages/*.meta
+
+Packages
