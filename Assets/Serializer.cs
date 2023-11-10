@@ -20,11 +20,12 @@ public class PositionAndRotation
     public float rotationX;
     public float rotationY;
     public float rotationZ;
+    public float rotationW;
 
     [JsonIgnore] public Vector3 positionVector3 => new(positionX, positionY, positionZ);
-    [JsonIgnore] public Quaternion rotationQuaternion => Quaternion.Euler(new Vector3(rotationX, rotationY, rotationZ));
+    [JsonIgnore] public Quaternion rotationQuaternion =>new(rotationX, rotationY, rotationZ, rotationW);
 
-    public PositionAndRotation(Vector3 position, Vector3 rotation)
+    public PositionAndRotation(Vector3 position, Quaternion rotation)
     {
         positionX = position.x;
         positionY = position.y;
@@ -33,6 +34,7 @@ public class PositionAndRotation
         rotationX = rotation.x;
         rotationY = rotation.y;
         rotationZ = rotation.z;
+        rotationW = rotation.w;
     }
 }
 
@@ -103,7 +105,7 @@ public class Serializer
             x => x.Key,
             x => new PositionAndRotation(
                 x.Value.transform.localPosition,
-                x.Value.transform.localRotation.eulerAngles));
+                x.Value.transform.localRotation));
 
         string dictionaryString = JsonConvert.SerializeObject(picsPos, Formatting.Indented);
         File.WriteAllText(jsonPath, dictionaryString);
