@@ -38,6 +38,34 @@ public class PositionAndRotation
     }
 }
 
+[Serializable]
+public class PositionAndQuaternion
+{
+    public float positionX;
+    public float positionY;
+    public float positionZ;
+
+    public float rotationX;
+    public float rotationY;
+    public float rotationZ;
+    public float rotationW;
+
+    [JsonIgnore] public Vector3 positionVector3 => new(positionX, positionY, positionZ);
+    [JsonIgnore] public Quaternion rotationQuaternion => Quaternion.Euler(new Vector3(rotationX, rotationY, rotationZ));
+
+    public PositionAndQuaternion(Vector3 position, Quaternion rotation)
+    {
+        positionX = position.x;
+        positionY = position.y;
+        positionZ = position.z;
+
+        rotationX = rotation.x;
+        rotationY = rotation.y;
+        rotationZ = rotation.z;
+        rotationW = rotation.w;
+    }
+}
+
 public class Serializer
 {
     [PublicAPI]
@@ -104,6 +132,25 @@ public class Serializer
         Dictionary<string, PositionAndRotation> picsPos = pics.ToDictionary(
             x => x.Key,
             x => new PositionAndRotation(
+                x.Value.transform.localPosition,
+                x.Value.transform.localRotation));
+
+        string dictionaryString = JsonConvert.SerializeObject(picsPos, Formatting.Indented);
+        File.WriteAllText(jsonPath, dictionaryString);
+
+        Debug.Log("Saved to " + jsonPath);
+    }
+
+    public void Serialize(Dictionary<string, CameraSetup> pics)
+    {
+        if (File.Exists(jsonPath))
+        {
+            File.Delete(jsonPath);
+        }
+
+        Dictionary<string, PositionAndQuaternion> picsPos = pics.ToDictionary(
+            x => x.Key,
+            x => new PositionAndQuaternion(
                 x.Value.transform.localPosition,
                 x.Value.transform.localRotation));
 

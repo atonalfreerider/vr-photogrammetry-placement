@@ -7,16 +7,14 @@ using VRTKLite.Controllers;
 public class Mover : MonoBehaviour
 {
     ControllerEvents controllerEvents;
-    GameObject main;
 
     void Awake()
     {
         controllerEvents = GetComponent<ControllerEvents>();
         controllerEvents.TriggerPressed += Grab;
         controllerEvents.TriggerReleased += Release;
-        controllerEvents.PrimaryAxisHeld += OnPrimaryAxisHeld;
-
-        main = GameObject.Find("Main");
+        controllerEvents.RightButtonPressed += Main.Instance.Advance;
+        controllerEvents.LeftButtonPressed += Main.Instance.Reverse;
     }
 
     readonly Dictionary<string, Collider> current = new();
@@ -51,18 +49,10 @@ public class Mover : MonoBehaviour
     {
         if (child != null)
         {
-            child.transform.parent.SetParent(main.transform);
+            child.transform.parent.SetParent(Main.Instance.transform);
             child = null;
         }
 
         current.Clear();
-    }
-
-
-    void OnPrimaryAxisHeld(Vector2 axisValue)
-    {
-        Vector3 translation = transform.forward * -axisValue.y * (2f * Time.deltaTime);
-
-        main.transform.Translate(translation);
     }
 }

@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Shapes.Lines;
+using UnityEngine;
 
 namespace Shapes
 {
@@ -18,6 +19,7 @@ namespace Shapes
         void BuildPolygons()
         {
             NewCube.InitCube(this);
+            StaticLink.InitStaticLink(this);
         }
 
         public static Polygon NewPoly(Material passMat)
