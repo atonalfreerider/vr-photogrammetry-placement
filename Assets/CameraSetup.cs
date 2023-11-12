@@ -52,12 +52,12 @@ public class CameraSetup : MonoBehaviour
         focalSphere.transform.localScale = Vector3.one * .01f;
         focalSphere.GetComponent<SphereCollider>().isTrigger = true;
         focalSphere.GetComponent<SphereCollider>().radius = 1f;
-        
+
         leadSpear = Instantiate(StaticLink.prototypeStaticLink);
         leadSpear.gameObject.SetActive(false);
         leadSpear.transform.SetParent(transform, false);
         leadSpear.SetColor(Color.red);
-        
+
         followSpear = Instantiate(StaticLink.prototypeStaticLink);
         followSpear.gameObject.SetActive(false);
         followSpear.transform.SetParent(transform, false);
@@ -80,7 +80,7 @@ public class CameraSetup : MonoBehaviour
         InstantiateTwoDancers();
     }
 
-       void InstantiateTwoDancers()
+    void InstantiateTwoDancers()
     {
         for (int j = 0; j < 17; j++)
         {
@@ -140,7 +140,7 @@ public class CameraSetup : MonoBehaviour
         followLinks.Add(LinkFromTo((int)Joints.R_Shoulder, (int)Joints.R_Hip, followPoseMarkers));
         followLinks.Add(LinkFromTo((int)Joints.L_Shoulder, (int)Joints.L_Hip, followPoseMarkers));
     }
-    
+
     public void SetFrame(int frameNumber)
     {
         photo.gameObject.name = frameNumber.ToString();
@@ -161,7 +161,7 @@ public class CameraSetup : MonoBehaviour
 
         LoadPose(frameNumber);
     }
- 
+
     void LoadPose(int frameNumber)
     {
         List<List<Vector2>> frame = dancersByFrame[frameNumber];
@@ -235,16 +235,33 @@ public class CameraSetup : MonoBehaviour
         return staticLink;
     }
 
-    public void DrawSpear(int jointNumber)
+    public Ray? DrawSpear(int jointNumber, bool isLead)
     {
-        leadSpear.LinkFromTo(transform, leadPoseMarkers[jointNumber].transform);
-        leadSpear.UpdateLink();        
-        leadSpear.SetLength(10);
-        leadSpear.gameObject.SetActive(leadPoseMarkers[jointNumber].gameObject.activeInHierarchy);
-
-        followSpear.LinkFromTo(transform, followPoseMarkers[jointNumber].transform);
+        // BUG: Ray is unassociated with Lead or Follow. This is a guess
+        // BUG: Need to determine for each ray, which is passing closer to the others
+        if (isLead)
+        {
+            Polygon leadTarget = leadPoseMarkers[jointNumber];
+            leadSpear.LinkFromTo(transform, leadPoseMarkers[jointNumber].transform);
+            leadSpear.UpdateLink();
+            leadSpear.SetLength(10);
+            leadSpear.gameObject.SetActive(leadPoseMarkers[jointNumber].gameObject.activeInHierarchy);
+            if (leadTarget.gameObject.activeInHierarchy)
+            {
+                return new Ray(transform.position, leadTarget.transform.position - transform.position);
+            }
+        }
+        
+        Polygon target = followPoseMarkers[jointNumber];
+        followSpear.LinkFromTo(transform, target.transform);
         followSpear.UpdateLink();
         followSpear.SetLength(10);
-        followSpear.gameObject.SetActive(followPoseMarkers[jointNumber].gameObject.activeInHierarchy);
+        followSpear.gameObject.SetActive(target.gameObject.activeInHierarchy);
+        if (target.gameObject.activeInHierarchy)
+        {
+            return new Ray(transform.position, target.transform.position - transform.position);
+        }
+
+        return null;
     }
 }

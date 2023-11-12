@@ -1,22 +1,25 @@
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
+using Shapes;
 using Shapes.Lines;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class Main : MonoBehaviour
 {
-    [Header("Parameters")]
-    public string PhotoFolderPath;
+    [Header("Parameters")] public string PhotoFolderPath;
 
     string jsonPath => Path.Combine(PhotoFolderPath, "positions.json");
 
     readonly Dictionary<string, CameraSetup> cameras = new();
     int currentFrameNumber = 0;
-    int currentSpearNumber = 0; 
+    int currentSpearNumber = 0;
     public static Main Instance;
     readonly List<StaticLink> cameraLinks = new();
+
+    Polygon leadTarget;
+    Polygon followTarget;
 
     public class ImgMetadata
     {
@@ -52,20 +55,20 @@ public class Main : MonoBehaviour
                 CameraSetup cameraSetup = new GameObject(dir.Name).AddComponent<CameraSetup>();
                 cameraSetup.Init(dir.FullName, dancersByCamera[count]);
                 cameras.Add(dir.Name, cameraSetup);
-                
+
                 cameraSetup.transform.SetParent(transform, false);
                 cameraSetup.transform.Translate(Vector3.back * count * .01f);
                 cameraSetup.SetFrame(0);
                 cameraSetups.Add(cameraSetup);
                 count++;
             }
-            
+
             foreach (CameraSetup cameraSetup in cameraSetups)
             {
                 foreach (CameraSetup setup in cameraSetups)
                 {
-                    if(setup.name == cameraSetup.name) continue;
-                    
+                    if (setup.name == cameraSetup.name) continue;
+
                     StaticLink link = Instantiate(StaticLink.prototypeStaticLink);
                     link.transform.SetParent(transform, false);
                     link.LinkFromTo(cameraSetup.transform, setup.transform);
@@ -105,6 +108,16 @@ public class Main : MonoBehaviour
         }
 
         UpdateCameraLinks();
+
+        leadTarget = Instantiate(PolygonFactory.Instance.icosahedron0);
+        leadTarget.gameObject.SetActive(false);
+        leadTarget.SetColor(Color.red);
+        leadTarget.transform.localScale = Vector3.one * .02f;
+
+        followTarget = Instantiate(PolygonFactory.Instance.icosahedron0);
+        followTarget.gameObject.SetActive(false);
+        followTarget.SetColor(Color.red);
+        followTarget.transform.localScale = Vector3.one * .02f;
     }
 
     public void Advance()
@@ -137,21 +150,42 @@ public class Main : MonoBehaviour
     public void DrawNextSpear()
     {
         currentSpearNumber++;
-        if(currentSpearNumber > 17) currentSpearNumber = 17;
-        foreach (CameraSetup cameraSetup in cameras.Values)
-        {
-            cameraSetup.DrawSpear(currentSpearNumber);
-        }
+        if (currentSpearNumber > 17) currentSpearNumber = 17;
+
+        UpdateSpears();
     }
-    
+
     public void DrawPreviousSpear()
     {
         currentSpearNumber--;
-        if(currentSpearNumber < 0) currentSpearNumber = 0;
+        if (currentSpearNumber < 0) currentSpearNumber = 0;
+        
+        UpdateSpears();
+    }
+
+    void UpdateSpears()
+    {
+        List<Ray> leadRays = new();
+        List<Ray> followRays = new();
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
-            cameraSetup.DrawSpear(currentSpearNumber);
+            Ray? leadRay = cameraSetup.DrawSpear(currentSpearNumber, true);
+            if (leadRay.HasValue)
+            {
+                leadRays.Add(leadRay.Value);
+            }
+
+            Ray? followRay = cameraSetup.DrawSpear(currentSpearNumber, false);
+            if (followRay.HasValue)
+            {
+                followRays.Add(followRay.Value);
+            }
         }
+
+        Vector3 minMidpoint = RayMidpointFinder.FindMinimumMidpoint(leadRays);
+        leadTarget.transform.position = minMidpoint;
+        Vector3 minFollowMidpoint = RayMidpointFinder.FindMinimumMidpoint(followRays);
+        followTarget.transform.localPosition = minFollowMidpoint;
     }
 
     void Update()
@@ -176,8 +210,8 @@ public class Main : MonoBehaviour
         {
             DrawNextSpear();
         }
-        
-        if(Keyboard.current.downArrowKey.wasPressedThisFrame)
+
+        if (Keyboard.current.downArrowKey.wasPressedThisFrame)
         {
             DrawPreviousSpear();
         }
