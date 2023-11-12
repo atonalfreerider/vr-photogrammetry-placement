@@ -25,7 +25,13 @@ public class Mover : MonoBehaviour
     }
 
     readonly Dictionary<string, Collider> current = new();
-    Collider child;
+    Collider? child;
+
+    bool isDragging = false;
+    Vector3 hitPointOrigin = Vector3.zero;
+    bool isGrabbing = false;
+    BoxCollider? currentPhoto;
+
 
     void OnTriggerEnter(Collider other)
     {
@@ -43,20 +49,27 @@ public class Mover : MonoBehaviour
         }
     }
 
-    bool isDragging = false;
-    Vector3 hitPointOrigin = Vector3.zero;
-    bool isGrabbing = false;
-
     void Grab()
     {
         if (current.Any())
         {
             isGrabbing = true;
             child = current.Values.First();
-            child.transform.parent.SetParent(transform);
+            switch (child)
+            {
+                case BoxCollider boxCollider:
+                    // photo focul pull
+                    currentPhoto = boxCollider;
+                    break;
+                case SphereCollider sphereCollider:
+                    // move whole camera
+                    sphereCollider.transform.parent.SetParent(transform);
+                    break;
+            }
         }
         else
         {
+            // drag floor
             Vector3? collisionPt = raycast.CastRayToFloor();
             if (collisionPt != null)
             {
@@ -70,16 +83,22 @@ public class Mover : MonoBehaviour
     {
         if (isGrabbing)
         {
+            if (currentPhoto != null)
+            {
+                float d = Vector3.Dot((transform.position - currentPhoto.transform.parent.position), Vector3.forward);
+                currentPhoto.transform.parent.GetComponent<CameraSetup>().MovePhotoToDistance(d);
+            }
+            
             Main.Instance.UpdateCameraLinks();
         }
-        
+
         if (isDragging)
         {
-             Vector3? floorHit = raycast.CastRayToFloor();
-             if (floorHit != null)
-             {
-                 Main.Instance.transform.localPosition = floorHit.Value - hitPointOrigin;
-             }
+            Vector3? floorHit = raycast.CastRayToFloor();
+            if (floorHit != null)
+            {
+                Main.Instance.transform.localPosition = floorHit.Value - hitPointOrigin;
+            }
         }
     }
 
@@ -88,7 +107,19 @@ public class Mover : MonoBehaviour
         if (child != null)
         {
             isGrabbing = false;
-            child.transform.parent.SetParent(Main.Instance.transform);
+            
+            switch (child)
+            {
+                case BoxCollider boxCollider:
+                    // photo focul pull
+                    currentPhoto = null;
+                    break;
+                case SphereCollider sphereCollider:
+                    // move whole camera
+                    sphereCollider.transform.parent.SetParent(Main.Instance.transform);
+                    break;
+            }
+
             child = null;
         }
 

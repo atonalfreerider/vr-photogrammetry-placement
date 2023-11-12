@@ -219,7 +219,7 @@ namespace Shapes
         public void AddCollider()
         {
             BoxCollider collider = gameObject.AddComponent<BoxCollider>();
-            collider.size = new Vector3(transform.localScale.x * .25f, .1f, transform.localScale.z * .25f);
+            collider.size = new Vector3(transform.localScale.x, .1f, transform.localScale.z);
             collider.isTrigger = true;
         }
 

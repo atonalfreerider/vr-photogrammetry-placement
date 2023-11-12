@@ -104,7 +104,7 @@ public class Main : MonoBehaviour
                 positionAndRotation.Value.positionVector3;
             cameraSetup.transform.localRotation =
                 positionAndRotation.Value.rotationQuaternion;
-            cameraSetup.Focal = positionAndRotation.Value.focal;
+            cameraSetup.MovePhotoToDistance(positionAndRotation.Value.focal);
         }
 
         UpdateCameraLinks();

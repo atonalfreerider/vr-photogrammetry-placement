@@ -108,7 +108,7 @@ public class Serializer
             x => new PositionAndRotation(
                 x.Value.transform.localPosition,
                 x.Value.transform.localRotation,
-                x.Value.Focal));
+                x.Value.GetFocal));
 
         string dictionaryString = JsonConvert.SerializeObject(picsPos, Formatting.Indented);
         File.WriteAllText(jsonPath, dictionaryString);

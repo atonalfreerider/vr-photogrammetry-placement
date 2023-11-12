@@ -17,7 +17,8 @@ public class CameraSetup : MonoBehaviour
     readonly List<Polygon> followPoseMarkers = new();
     readonly List<StaticLink> followLinks = new();
 
-    public float Focal = 5;
+    float focal;
+    public float GetFocal => focal;
 
     StaticLink leadSpear;
     StaticLink followSpear;
@@ -73,9 +74,9 @@ public class CameraSetup : MonoBehaviour
         photo = Instantiate(NewCube.textureRectPoly, transform, false);
         photo.gameObject.SetActive(true);
         photo.transform.SetParent(transform, false);
+        photo.AddCollider();
 
         photo.transform.Rotate(Vector3.right, -90);
-        photo.transform.Translate(Vector3.down * Focal * .1f);
 
         InstantiateTwoDancers();
     }
@@ -86,7 +87,7 @@ public class CameraSetup : MonoBehaviour
         {
             Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
             sphere.gameObject.SetActive(false);
-            sphere.transform.localScale = Vector3.one * .02f;
+            sphere.transform.localScale = Vector3.one * .005f;
             sphere.transform.SetParent(photo.transform, false);
             leadPoseMarkers.Add(sphere);
         }
@@ -115,7 +116,7 @@ public class CameraSetup : MonoBehaviour
         {
             Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
             sphere.gameObject.SetActive(false);
-            sphere.transform.localScale = Vector3.one * .001f;
+            sphere.transform.localScale = Vector3.one * .005f;
             sphere.transform.SetParent(photo.transform, false);
             followPoseMarkers.Add(sphere);
         }
@@ -230,7 +231,7 @@ public class CameraSetup : MonoBehaviour
     {
         StaticLink staticLink = Instantiate(StaticLink.prototypeStaticLink);
         staticLink.gameObject.SetActive(true);
-        staticLink.transform.SetParent(transform, false);
+        staticLink.transform.SetParent(photo.transform, false);
         staticLink.LinkFromTo(joints[index1].transform, joints[index2].transform);
         return staticLink;
     }
@@ -263,5 +264,11 @@ public class CameraSetup : MonoBehaviour
         }
 
         return null;
+    }
+
+    public void MovePhotoToDistance(float d)
+    {
+        focal = d;
+        photo.transform.localPosition = new Vector3(0, 0, focal);
     }
 }
