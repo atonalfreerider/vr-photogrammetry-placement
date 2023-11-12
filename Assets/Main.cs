@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using Shapes;
 using Shapes.Lines;
@@ -111,11 +113,13 @@ public class Main : MonoBehaviour
 
         leadTarget = Instantiate(PolygonFactory.Instance.icosahedron0);
         leadTarget.gameObject.SetActive(false);
+        leadTarget.transform.SetParent(transform, false);
         leadTarget.SetColor(Color.red);
         leadTarget.transform.localScale = Vector3.one * .02f;
 
         followTarget = Instantiate(PolygonFactory.Instance.icosahedron0);
         followTarget.gameObject.SetActive(false);
+        followTarget.transform.SetParent(transform, false);
         followTarget.SetColor(Color.red);
         followTarget.transform.localScale = Vector3.one * .02f;
     }
@@ -165,27 +169,61 @@ public class Main : MonoBehaviour
 
     void UpdateSpears()
     {
-        List<Ray> leadRays = new();
-        List<Ray> followRays = new();
+        // blind group rays based on arbitrary 50/50 could be lead or follow
+        List<Ray> allRays = new();
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
-            Ray? leadRay = cameraSetup.DrawSpear(currentSpearNumber, true);
-            if (leadRay.HasValue)
+            Ray? ray1 = cameraSetup.DrawSpear(currentSpearNumber, true);
+            if (ray1.HasValue)
             {
-                leadRays.Add(leadRay.Value);
+                allRays.Add(ray1.Value);
             }
 
-            Ray? followRay = cameraSetup.DrawSpear(currentSpearNumber, false);
-            if (followRay.HasValue)
+            Ray? ray2 = cameraSetup.DrawSpear(currentSpearNumber, false);
+            if (ray2.HasValue)
             {
-                followRays.Add(followRay.Value);
+                allRays.Add(ray2.Value);
+            }
+        }
+       
+        // find the locus of each of these lists
+        Vector3 locus = RayMidpointFinder.FindMinimumMidpoint(allRays);
+
+        // re-sort on the basis if they are closer to one locus or another
+        Tuple<List<Ray>, List<Ray>> sortedRays = SortRays(allRays, locus);
+        
+        // finally set target for re-sorted lists
+        Vector3 minMidpoint = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item1);
+        leadTarget.transform.position = minMidpoint;
+        leadTarget.gameObject.SetActive(true);
+        
+        Vector3 minFollowMidpoint = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item2);
+        followTarget.transform.localPosition = minFollowMidpoint;
+        followTarget.gameObject.SetActive(true);
+    }
+
+    static Tuple<List<Ray>,List<Ray>> SortRays(List<Ray> rays, Vector3 target)
+    {
+        List<Ray> leftRays = new List<Ray>();
+        List<Ray> rightRays = new List<Ray>();
+
+        foreach (var ray in rays)
+        {
+            Vector3 toRay = ray.origin - target;
+            Vector3 cross = Vector3.Cross(Vector3.up, toRay);
+
+            // Determine which side of the target the ray is on
+            if (Vector3.Dot(cross, ray.direction) > 0)
+            {
+                rightRays.Add(ray);
+            }
+            else
+            {
+                leftRays.Add(ray);
             }
         }
 
-        Vector3 minMidpoint = RayMidpointFinder.FindMinimumMidpoint(leadRays);
-        leadTarget.transform.position = minMidpoint;
-        Vector3 minFollowMidpoint = RayMidpointFinder.FindMinimumMidpoint(followRays);
-        followTarget.transform.localPosition = minFollowMidpoint;
+        return new Tuple<List<Ray>, List<Ray>>(leftRays, rightRays);
     }
 
     void Update()

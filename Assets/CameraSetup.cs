@@ -238,8 +238,6 @@ public class CameraSetup : MonoBehaviour
 
     public Ray? DrawSpear(int jointNumber, bool isLead)
     {
-        // BUG: Ray is unassociated with Lead or Follow. This is a guess
-        // BUG: Need to determine for each ray, which is passing closer to the others
         if (isLead)
         {
             Polygon leadTarget = leadPoseMarkers[jointNumber];
@@ -249,10 +247,12 @@ public class CameraSetup : MonoBehaviour
             leadSpear.gameObject.SetActive(leadPoseMarkers[jointNumber].gameObject.activeInHierarchy);
             if (leadTarget.gameObject.activeInHierarchy)
             {
-                return new Ray(transform.position, leadTarget.transform.position - transform.position);
+                return new Ray(
+                    transform.position,
+                    Vector3.Normalize(leadTarget.transform.position - transform.position));
             }
         }
-        
+
         Polygon target = followPoseMarkers[jointNumber];
         followSpear.LinkFromTo(transform, target.transform);
         followSpear.UpdateLink();
@@ -260,7 +260,9 @@ public class CameraSetup : MonoBehaviour
         followSpear.gameObject.SetActive(target.gameObject.activeInHierarchy);
         if (target.gameObject.activeInHierarchy)
         {
-            return new Ray(transform.position, target.transform.position - transform.position);
+            return new Ray(
+                transform.position, 
+                Vector3.Normalize(target.transform.position - transform.position));
         }
 
         return null;
