@@ -11,26 +11,7 @@ public class SqliteInput : MonoBehaviour
 {
     [Header("Input")] public string DbPath;
 
-    enum Joints
-    {
-        Nose = 0,
-        L_Eye = 1,
-        R_Eye = 2,
-        L_Ear = 3,
-        R_Ear = 4,
-        L_Shoulder = 5,
-        R_Shoulder = 6,
-        L_Elbow = 7,
-        R_Elbow = 8,
-        L_Wrist = 9,
-        R_Wrist = 10,
-        L_Hip = 11,
-        R_Hip = 12,
-        L_Knee = 13,
-        R_Knee = 14,
-        L_Ankle = 15,
-        R_Ankle = 16
-    }
+    public static int FrameMax = -1;
 
     public List<List<List<List<Vector2>>>> ReadFrameFromDb()
     {
@@ -65,6 +46,11 @@ public class SqliteInput : MonoBehaviour
             int frameId = reader.GetInt32(indexes["frame_id"]);
             int dancerId = reader.GetInt32(indexes["dancer_id"]);
             int cameraId = reader.GetInt32(indexes["camera_id"]);
+
+            if (frameId > FrameMax)
+            {
+                FrameMax = frameId;
+            }
 
             Vector2 position = new(
                 reader.GetFloat(indexes["position_x"]),

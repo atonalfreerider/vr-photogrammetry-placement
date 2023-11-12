@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Newtonsoft.Json;
 using Shapes;
 using Shapes.Lines;
@@ -20,8 +19,11 @@ public class Main : MonoBehaviour
     public static Main Instance;
     readonly List<StaticLink> cameraLinks = new();
 
-    Polygon leadTarget;
-    Polygon followTarget;
+    Dancer lead;
+    Dancer follow;
+
+    Polygon leadGroundFoot;
+    Polygon followGroundFoot;
 
     public class ImgMetadata
     {
@@ -65,18 +67,20 @@ public class Main : MonoBehaviour
                 count++;
             }
 
+            GameObject cameraLinkContainer = new GameObject("CameraLinks");
+            cameraLinkContainer.transform.SetParent(transform, false);
             foreach (CameraSetup cameraSetup in cameraSetups)
             {
                 foreach (CameraSetup setup in cameraSetups)
                 {
                     if (setup.name == cameraSetup.name) continue;
 
-                    StaticLink link = Instantiate(StaticLink.prototypeStaticLink);
-                    link.transform.SetParent(transform, false);
-                    link.LinkFromTo(cameraSetup.transform, setup.transform);
-                    link.gameObject.SetActive(true);
-                    link.SetColor(Color.magenta);
-                    cameraLinks.Add(link);
+                    StaticLink cameraLink = Instantiate(StaticLink.prototypeStaticLink);
+                    cameraLink.transform.SetParent(cameraLinkContainer.transform, false);
+                    cameraLink.LinkFromTo(cameraSetup.transform, setup.transform);
+                    cameraLink.gameObject.SetActive(true);
+                    cameraLink.SetColor(Color.magenta);
+                    cameraLinks.Add(cameraLink);
                 }
             }
         }
@@ -111,26 +115,28 @@ public class Main : MonoBehaviour
 
         UpdateCameraLinks();
 
-        leadTarget = Instantiate(PolygonFactory.Instance.icosahedron0);
-        leadTarget.gameObject.SetActive(false);
-        leadTarget.transform.SetParent(transform, false);
-        leadTarget.SetColor(Color.red);
-        leadTarget.transform.localScale = Vector3.one * .02f;
+        lead = new GameObject("lead").AddComponent<Dancer>();
+        follow = new GameObject("follow").AddComponent<Dancer>();
+        lead.transform.SetParent(transform, false);
+        follow.transform.SetParent(transform, false);
 
-        followTarget = Instantiate(PolygonFactory.Instance.icosahedron0);
-        followTarget.gameObject.SetActive(false);
-        followTarget.transform.SetParent(transform, false);
-        followTarget.SetColor(Color.red);
-        followTarget.transform.localScale = Vector3.one * .02f;
+        Draw3DPose();
     }
 
     public void Advance()
     {
         currentFrameNumber++;
+        if (currentFrameNumber > SqliteInput.FrameMax - 1)
+        {
+            currentFrameNumber = SqliteInput.FrameMax - 1;
+        }
+
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
             cameraSetup.SetFrame(currentFrameNumber);
         }
+
+        Draw3DPose();
     }
 
     public void Reverse()
@@ -141,6 +147,8 @@ public class Main : MonoBehaviour
         {
             cameraSetup.SetFrame(currentFrameNumber);
         }
+
+        Draw3DPose();
     }
 
     public void UpdateCameraLinks()
@@ -156,58 +164,83 @@ public class Main : MonoBehaviour
         currentSpearNumber++;
         if (currentSpearNumber > 17) currentSpearNumber = 17;
 
-        UpdateSpears();
+        foreach (CameraSetup cameraSetup in cameras.Values)
+        {
+            cameraSetup.DrawSpear(currentSpearNumber);
+        }
     }
 
     public void DrawPreviousSpear()
     {
         currentSpearNumber--;
         if (currentSpearNumber < 0) currentSpearNumber = 0;
-        
-        UpdateSpears();
-    }
 
-    void UpdateSpears()
-    {
-        // blind group rays based on arbitrary 50/50 could be lead or follow
-        List<Ray> allRays = new();
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
-            Ray? ray1 = cameraSetup.DrawSpear(currentSpearNumber, true);
-            if (ray1.HasValue)
-            {
-                allRays.Add(ray1.Value);
-            }
-
-            Ray? ray2 = cameraSetup.DrawSpear(currentSpearNumber, false);
-            if (ray2.HasValue)
-            {
-                allRays.Add(ray2.Value);
-            }
+            cameraSetup.DrawSpear(currentSpearNumber);
         }
-       
-        // find the locus of each of these lists
-        Vector3 locus = RayMidpointFinder.FindMinimumMidpoint(allRays);
-
-        // re-sort on the basis if they are closer to one locus or another
-        Tuple<List<Ray>, List<Ray>> sortedRays = SortRays(allRays, locus);
-        
-        // finally set target for re-sorted lists
-        Vector3 minMidpoint = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item1);
-        leadTarget.transform.position = minMidpoint;
-        leadTarget.gameObject.SetActive(true);
-        
-        Vector3 minFollowMidpoint = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item2);
-        followTarget.transform.localPosition = minFollowMidpoint;
-        followTarget.gameObject.SetActive(true);
     }
 
-    static Tuple<List<Ray>,List<Ray>> SortRays(List<Ray> rays, Vector3 target)
+    void Draw3DPose()
+    {
+        // blind group rays based on arbitrary 50/50 could be lead or follow
+        List<Ray>[] allRays = new List<Ray>[17];
+        for (int i = 0; i < allRays.Length; i++)
+        {
+            allRays[i] = new List<Ray>();
+        }
+
+        foreach (CameraSetup cameraSetup in cameras.Values)
+        {
+            Tuple<Ray?, Ray?>[] camRays = cameraSetup.PoseRays();
+            int jointCount = 0;
+            foreach (Tuple<Ray?, Ray?> camRay in camRays)
+            {
+                if (camRay.Item1 != null)
+                {
+                    allRays[jointCount].Add(camRay.Item1.Value);
+                }
+
+                if (camRay.Item2 != null)
+                {
+                    allRays[jointCount].Add(camRay.Item2.Value);
+                }
+
+                jointCount++;
+            }
+        }
+
+        int jointCount2 = 0;
+        List<Vector3> leadPose = new();
+        List<Vector3> followPose = new();
+        foreach (List<Ray> jointRays in allRays)
+        {
+            // find the locus of each of these lists
+            Vector3 jointLocus = RayMidpointFinder.FindMinimumMidpoint(jointRays);
+
+            // re-sort on the basis if they are closer to one locus or another
+            Tuple<List<Ray>, List<Ray>> sortedRays = SortRays(jointRays, jointLocus);
+
+            // finally set target for re-sorted lists
+            Vector3 leadJointLocus = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item1);
+            leadPose.Add(leadJointLocus - transform.position);
+
+            Vector3 followJointLocus = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item2);
+            followPose.Add(followJointLocus - transform.position);
+
+            jointCount2++;
+        }
+
+        lead.Set3DPose(leadPose);
+        follow.Set3DPose(followPose);
+    }
+
+    static Tuple<List<Ray>, List<Ray>> SortRays(List<Ray> rays, Vector3 target)
     {
         List<Ray> leftRays = new List<Ray>();
         List<Ray> rightRays = new List<Ray>();
 
-        foreach (var ray in rays)
+        foreach (Ray ray in rays)
         {
             Vector3 toRay = ray.origin - target;
             Vector3 cross = Vector3.Cross(Vector3.up, toRay);

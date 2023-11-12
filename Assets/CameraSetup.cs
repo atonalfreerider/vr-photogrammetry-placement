@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using JetBrains.Annotations;
 using Shapes;
 using Shapes.Lines;
@@ -11,38 +12,15 @@ public class CameraSetup : MonoBehaviour
     Rectangle photo;
     List<List<List<Vector2>>> dancersByFrame = new();
     string dirPath;
-    readonly List<Polygon> leadPoseMarkers = new();
-    readonly List<StaticLink> leadLinks = new();
 
-    readonly List<Polygon> followPoseMarkers = new();
-    readonly List<StaticLink> followLinks = new();
+    Dancer lead;
+    Dancer follow;
 
     float focal;
     public float GetFocal => focal;
 
     StaticLink leadSpear;
     StaticLink followSpear;
-
-    enum Joints
-    {
-        Nose = 0,
-        L_Eye = 1,
-        R_Eye = 2,
-        L_Ear = 3,
-        R_Ear = 4,
-        L_Shoulder = 5,
-        R_Shoulder = 6,
-        L_Elbow = 7,
-        R_Elbow = 8,
-        L_Wrist = 9,
-        R_Wrist = 10,
-        L_Hip = 11,
-        R_Hip = 12,
-        L_Knee = 13,
-        R_Knee = 14,
-        L_Ankle = 15,
-        R_Ankle = 16
-    }
 
     void Awake()
     {
@@ -78,68 +56,8 @@ public class CameraSetup : MonoBehaviour
 
         photo.transform.Rotate(Vector3.right, -90);
 
-        InstantiateTwoDancers();
-    }
-
-    void InstantiateTwoDancers()
-    {
-        for (int j = 0; j < 17; j++)
-        {
-            Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
-            sphere.gameObject.SetActive(false);
-            sphere.transform.localScale = Vector3.one * .005f;
-            sphere.transform.SetParent(photo.transform, false);
-            leadPoseMarkers.Add(sphere);
-        }
-
-        leadLinks.Add(LinkFromTo((int)Joints.Nose, (int)Joints.L_Eye, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.Nose, (int)Joints.R_Eye, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.L_Eye, (int)Joints.R_Eye, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.L_Eye, (int)Joints.L_Ear, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.L_Ear, (int)Joints.L_Shoulder, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.R_Eye, (int)Joints.R_Ear, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.R_Ear, (int)Joints.R_Shoulder, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.R_Hip, (int)Joints.R_Knee, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.R_Knee, (int)Joints.R_Ankle, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.L_Hip, (int)Joints.L_Knee, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.L_Knee, (int)Joints.L_Ankle, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.R_Shoulder, (int)Joints.R_Elbow, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.R_Elbow, (int)Joints.R_Wrist, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.L_Shoulder, (int)Joints.L_Elbow, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.L_Elbow, (int)Joints.L_Wrist, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.R_Shoulder, (int)Joints.L_Shoulder, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.R_Hip, (int)Joints.L_Hip, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.R_Shoulder, (int)Joints.R_Hip, leadPoseMarkers));
-        leadLinks.Add(LinkFromTo((int)Joints.L_Shoulder, (int)Joints.L_Hip, leadPoseMarkers));
-
-        for (int i = 0; i < 17; i++)
-        {
-            Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
-            sphere.gameObject.SetActive(false);
-            sphere.transform.localScale = Vector3.one * .005f;
-            sphere.transform.SetParent(photo.transform, false);
-            followPoseMarkers.Add(sphere);
-        }
-
-        followLinks.Add(LinkFromTo((int)Joints.Nose, (int)Joints.L_Eye, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.Nose, (int)Joints.R_Eye, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.L_Eye, (int)Joints.R_Eye, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.L_Eye, (int)Joints.L_Ear, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.L_Ear, (int)Joints.L_Shoulder, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.R_Eye, (int)Joints.R_Ear, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.R_Ear, (int)Joints.R_Shoulder, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.R_Hip, (int)Joints.R_Knee, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.R_Knee, (int)Joints.R_Ankle, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.L_Hip, (int)Joints.L_Knee, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.L_Knee, (int)Joints.L_Ankle, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.R_Shoulder, (int)Joints.R_Elbow, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.R_Elbow, (int)Joints.R_Wrist, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.L_Shoulder, (int)Joints.L_Elbow, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.L_Elbow, (int)Joints.L_Wrist, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.R_Shoulder, (int)Joints.L_Shoulder, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.R_Hip, (int)Joints.L_Hip, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.R_Shoulder, (int)Joints.R_Hip, followPoseMarkers));
-        followLinks.Add(LinkFromTo((int)Joints.L_Shoulder, (int)Joints.L_Hip, followPoseMarkers));
+        lead = photo.gameObject.AddComponent<Dancer>();
+        follow = photo.gameObject.AddComponent<Dancer>();
     }
 
     public void SetFrame(int frameNumber)
@@ -167,105 +85,123 @@ public class CameraSetup : MonoBehaviour
     {
         List<List<Vector2>> frame = dancersByFrame[frameNumber];
 
-        bool anyActive = false;
-        bool isLead = true;
-        foreach (List<Vector2> dancer in frame)
+        int leadIndex = DancerBestIndex(frame, lead);
+
+        List<List<Vector2>> secondFrameCheck = new();
+        if (leadIndex != -1)
         {
-            float height = dancer[(int)Joints.Nose].y -
-                           Math.Min(dancer[(int)Joints.L_Ankle].y, dancer[(int)Joints.R_Ankle].y);
-            if (height < 100) continue;
-
-            anyActive = true;
-
-            for (int j = 0; j < dancer.Count; j++)
-            {
-                Polygon sphere = isLead ? leadPoseMarkers[j] : followPoseMarkers[j];
-                sphere.gameObject.SetActive(true);
-
-                sphere.transform.localPosition = new Vector3(dancer[j].x / 640f, 0, dancer[j].y / 360f);
-            }
-
-            isLead = false;
+            lead.SetVisible(true);
+            lead.Set2DPose(frame[leadIndex]);
+            lead.lastNosePosition = frame[leadIndex][(int)Joints.Nose];
+            secondFrameCheck.AddRange(frame.Where((_, i) => i != leadIndex));
+        }
+        else
+        {
+            secondFrameCheck = frame;
+            lead.SetVisible(false);
         }
 
-        foreach (StaticLink staticLink in leadLinks)
+        int followIndex = DancerBestIndex(secondFrameCheck, follow);
+
+        if (followIndex != -1)
         {
-            staticLink.gameObject.SetActive(true);
-            staticLink.UpdateLink();
+            follow.SetVisible(true);
+            follow.Set2DPose(secondFrameCheck[followIndex]);
+            follow.lastNosePosition = secondFrameCheck[followIndex][(int)Joints.Nose];
         }
-
-        foreach (StaticLink staticLink in followLinks)
+        else
         {
-            staticLink.gameObject.SetActive(true);
-            staticLink.UpdateLink();
-        }
-
-        if (isLead)
-        {
-            foreach (Polygon followPoseMarker in followPoseMarkers)
-            {
-                followPoseMarker.gameObject.SetActive(false);
-            }
-
-            foreach (StaticLink followLink in followLinks)
-            {
-                followLink.gameObject.SetActive(false);
-            }
-        }
-
-        if (!anyActive)
-        {
-            foreach (Polygon followPoseMarker in leadPoseMarkers)
-            {
-                followPoseMarker.gameObject.SetActive(false);
-            }
-
-            foreach (StaticLink followLink in leadLinks)
-            {
-                followLink.gameObject.SetActive(false);
-            }
+            follow.SetVisible(false);
         }
     }
 
-    StaticLink LinkFromTo(int index1, int index2, IReadOnlyList<Polygon> joints)
+    /// <summary>
+    /// Attempt to sort based on nose distance continuity
+    /// </summary>
+    static int DancerBestIndex(List<List<Vector2>> frame, Dancer dancer)
     {
-        StaticLink staticLink = Instantiate(StaticLink.prototypeStaticLink);
-        staticLink.gameObject.SetActive(true);
-        staticLink.transform.SetParent(photo.transform, false);
-        staticLink.LinkFromTo(joints[index1].transform, joints[index2].transform);
-        return staticLink;
-    }
-
-    public Ray? DrawSpear(int jointNumber, bool isLead)
-    {
-        if (isLead)
+        Dictionary<int, Vector2> allNoses = new();
+        int noseCount = 0;
+        foreach (List<Vector2> pose2D in frame)
         {
-            Polygon leadTarget = leadPoseMarkers[jointNumber];
-            leadSpear.LinkFromTo(transform, leadPoseMarkers[jointNumber].transform);
-            leadSpear.UpdateLink();
-            leadSpear.SetLength(10);
-            leadSpear.gameObject.SetActive(leadPoseMarkers[jointNumber].gameObject.activeInHierarchy);
-            if (leadTarget.gameObject.activeInHierarchy)
+            Vector2 nose = pose2D[(int)Joints.Nose];
+            Vector2 lAnkle = pose2D[(int)Joints.L_Ankle];
+            Vector2 rAnkle = pose2D[(int)Joints.R_Ankle];
+            float height = nose.y -
+                           Math.Min(lAnkle.y, rAnkle.y);
+            if (height < 150)
             {
-                return new Ray(
-                    transform.position,
-                    Vector3.Normalize(leadTarget.transform.position - transform.position));
+                noseCount++;
+                continue; // filter out sitting
+            }
+
+            allNoses.Add(noseCount, nose);
+            noseCount++;
+        }
+
+        int dancerIdx = -1;
+        float minD = 1000;
+        foreach ((int idx, Vector2 nose) in allNoses)
+        {
+            float distance = Vector2.Distance(nose, dancer.lastNosePosition);
+            if (distance < minD)
+            {
+                if (dancer.lastNosePosition.magnitude <= float.Epsilon || // very first
+                    distance < 50)   // don't let big frame jumps
+                {
+                    minD = distance;
+                    dancerIdx = idx;
+                }
             }
         }
 
-        Polygon target = followPoseMarkers[jointNumber];
-        followSpear.LinkFromTo(transform, target.transform);
+        return dancerIdx;
+    }
+
+
+    public void DrawSpear(int jointNumber)
+    {
+        Polygon leadTarget = lead.GetJoint(jointNumber);
+        leadSpear.LinkFromTo(transform, leadTarget.transform);
+        leadSpear.UpdateLink();
+        leadSpear.SetLength(10);
+        leadSpear.gameObject.SetActive(leadTarget.gameObject.activeInHierarchy);
+
+        Polygon followTarget = follow.GetJoint(jointNumber);
+        followSpear.LinkFromTo(transform, followTarget.transform);
         followSpear.UpdateLink();
         followSpear.SetLength(10);
-        followSpear.gameObject.SetActive(target.gameObject.activeInHierarchy);
-        if (target.gameObject.activeInHierarchy)
+        followSpear.gameObject.SetActive(followTarget.gameObject.activeInHierarchy);
+    }
+
+    public Tuple<Ray?, Ray?>[] PoseRays()
+    {
+        Tuple<Ray?, Ray?>[] returnList = new Tuple<Ray?, Ray?>[17];
+
+        for (int i = 0; i < returnList.Length; i++)
         {
-            return new Ray(
-                transform.position, 
-                Vector3.Normalize(target.transform.position - transform.position));
+            Ray? ray1 = null;
+            Ray? ray2 = null;
+            Polygon leadPoseMarker = lead.GetJoint(i);
+            if (leadPoseMarker.gameObject.activeInHierarchy)
+            {
+                ray1 = new Ray(
+                    transform.position,
+                    Vector3.Normalize(leadPoseMarker.transform.position - transform.position));
+            }
+
+            Polygon followPoseMarker = follow.GetJoint(i);
+            if (followPoseMarker.gameObject.activeInHierarchy)
+            {
+                ray2 = new Ray(
+                    transform.position,
+                    Vector3.Normalize(followPoseMarker.transform.position - transform.position));
+            }
+
+            returnList[i] = new Tuple<Ray?, Ray?>(ray1, ray2);
         }
 
-        return null;
+        return returnList;
     }
 
     public void MovePhotoToDistance(float d)

@@ -69,7 +69,7 @@ static class RayMidpointFinder
             .Sum();
     }
 
-    public static float DistanceFromPointToRay(Vector3 point, Ray ray)
+    static float DistanceFromPointToRay(Vector3 point, Ray ray)
     {
         // Calculate the shortest distance from 'point' to 'ray'
         Vector3 w0 = point - ray.origin;
