@@ -10,6 +10,7 @@ public class CameraSetup : MonoBehaviour
     List<List<List<Vector2>>> dancersByFrame = new();
     string dirPath;
     readonly List<GameObject> currentPoseMarkers = new();
+    public float Focal = 5;
 
     void Awake()
     {
@@ -35,7 +36,7 @@ public class CameraSetup : MonoBehaviour
             photo.transform.SetParent(transform, false);
             
             photo.transform.Rotate(Vector3.right, -90);
-            photo.transform.Translate(Vector3.down * 5 * .1f);
+            photo.transform.Translate(Vector3.down * Focal * .1f);
         }
 
         photo.gameObject.name = frameNumber.ToString();

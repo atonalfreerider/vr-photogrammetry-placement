@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
-using CsvHelper;
+
 using CsvHelper.Configuration;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
@@ -21,11 +19,13 @@ public class PositionAndRotation
     public float rotationY;
     public float rotationZ;
     public float rotationW;
+    
+    public float focal;
 
     [JsonIgnore] public Vector3 positionVector3 => new(positionX, positionY, positionZ);
     [JsonIgnore] public Quaternion rotationQuaternion =>new(rotationX, rotationY, rotationZ, rotationW);
 
-    public PositionAndRotation(Vector3 position, Quaternion rotation)
+    public PositionAndRotation(Vector3 position, Quaternion rotation, float focal)
     {
         positionX = position.x;
         positionY = position.y;
@@ -35,34 +35,8 @@ public class PositionAndRotation
         rotationY = rotation.y;
         rotationZ = rotation.z;
         rotationW = rotation.w;
-    }
-}
-
-[Serializable]
-public class PositionAndQuaternion
-{
-    public float positionX;
-    public float positionY;
-    public float positionZ;
-
-    public float rotationX;
-    public float rotationY;
-    public float rotationZ;
-    public float rotationW;
-
-    [JsonIgnore] public Vector3 positionVector3 => new(positionX, positionY, positionZ);
-    [JsonIgnore] public Quaternion rotationQuaternion => Quaternion.Euler(new Vector3(rotationX, rotationY, rotationZ));
-
-    public PositionAndQuaternion(Vector3 position, Quaternion rotation)
-    {
-        positionX = position.x;
-        positionY = position.y;
-        positionZ = position.z;
-
-        rotationX = rotation.x;
-        rotationY = rotation.y;
-        rotationZ = rotation.z;
-        rotationW = rotation.w;
+        
+        this.focal = focal;
     }
 }
 
@@ -122,7 +96,7 @@ public class Serializer
         csvPath = path;
     }
 
-    public void SerializeCartesian(Dictionary<string, GameObject> pics)
+    public void Serialize(Dictionary<string, CameraSetup> pics)
     {
         if (File.Exists(jsonPath))
         {
@@ -133,76 +107,12 @@ public class Serializer
             x => x.Key,
             x => new PositionAndRotation(
                 x.Value.transform.localPosition,
-                x.Value.transform.localRotation));
+                x.Value.transform.localRotation,
+                x.Value.Focal));
 
         string dictionaryString = JsonConvert.SerializeObject(picsPos, Formatting.Indented);
         File.WriteAllText(jsonPath, dictionaryString);
 
         Debug.Log("Saved to " + jsonPath);
-    }
-
-    public void Serialize(Dictionary<string, CameraSetup> pics)
-    {
-        if (File.Exists(jsonPath))
-        {
-            File.Delete(jsonPath);
-        }
-
-        Dictionary<string, PositionAndQuaternion> picsPos = pics.ToDictionary(
-            x => x.Key,
-            x => new PositionAndQuaternion(
-                x.Value.transform.localPosition,
-                x.Value.transform.localRotation));
-
-        string dictionaryString = JsonConvert.SerializeObject(picsPos, Formatting.Indented);
-        File.WriteAllText(jsonPath, dictionaryString);
-
-        Debug.Log("Saved to " + jsonPath);
-    }
-
-    public void SerializeGeoTag(Dictionary<string, GameObject> pics, Vector3 sceneOffset, Dictionary<string, DateTime> picsByDateTime)
-    {
-        if (File.Exists(csvPath))
-        {
-            File.Delete(csvPath);
-        }
-
-        IEnumerable<GeoTag> picsPos = pics.Select(
-            x => ToGeoTag(
-                x.Key,
-                x.Value.transform.localPosition,
-                sceneOffset,
-                x.Value.transform.localRotation.eulerAngles,
-                picsByDateTime[x.Key]));
-
-        CsvConfiguration config = new CsvConfiguration(CultureInfo.InvariantCulture)
-        {
-            Delimiter = ",",
-            Encoding = Encoding.UTF8
-        };
-        using (StreamWriter writer = new StreamWriter(csvPath))
-        using (CsvWriter csv = new CsvWriter(writer, config))
-        {
-            csv.Context.RegisterClassMap<ContractMap>();
-            csv.WriteRecords(picsPos);
-        }
-
-        Debug.Log("Saved to " + csvPath);
-    }
-
-    static GeoTag ToGeoTag(string sourceFile, Vector3 meterVector3, Vector3 offset, Vector3 euler, DateTime dateTime)
-    {
-        float longitude = meterVector3.x / 111319.9f;
-        float latitude = meterVector3.z / 111319.9f;
-
-        return new GeoTag(
-            sourceFile,
-            dateTime,
-            longitude + offset.x,
-            latitude + offset.y,
-            meterVector3.y + offset.z,
-            euler.x,
-            euler.y,
-            euler.z);
     }
 }

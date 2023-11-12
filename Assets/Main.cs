@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
@@ -16,7 +15,7 @@ public class Main : MonoBehaviour
     readonly Dictionary<string, CameraSetup> cameras = new();
     int currentFrameNumber = 0;
     public static Main Instance;
-    List<StaticLink> cameraLinks = new();
+    readonly List<StaticLink> cameraLinks = new();
 
     public class ImgMetadata
     {
@@ -69,6 +68,7 @@ public class Main : MonoBehaviour
                     StaticLink link = Instantiate(StaticLink.prototypeStaticLink);
                     link.transform.SetParent(transform, false);
                     link.LinkFromTo(cameraSetup.transform, setup.transform);
+                    link.gameObject.SetActive(true);
                     cameraLinks.Add(link);
                 }
             }
@@ -99,13 +99,10 @@ public class Main : MonoBehaviour
                 positionAndRotation.Value.positionVector3;
             cameraSetup.transform.localRotation =
                 positionAndRotation.Value.rotationQuaternion;
+            cameraSetup.Focal = positionAndRotation.Value.focal;
         }
 
-        foreach (StaticLink cameraLink in cameraLinks)
-        {
-            cameraLink.gameObject.SetActive(true);
-            cameraLink.UpdateLink();
-        }
+        UpdateCameraLinks();
     }
 
     public void Advance()
@@ -124,6 +121,14 @@ public class Main : MonoBehaviour
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
             cameraSetup.SetFrame(currentFrameNumber);
+        }
+    }
+
+    public void UpdateCameraLinks()
+    {
+        foreach (StaticLink cameraLink in cameraLinks)
+        {
+            cameraLink.UpdateLink();
         }
     }
 

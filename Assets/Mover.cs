@@ -43,11 +43,13 @@ public class Mover : MonoBehaviour
 
     bool isDragging = false;
     Vector3 hitPointOrigin = Vector3.zero;
+    bool isGrabbing = false;
 
     void Grab()
     {
         if (current.Any())
         {
+            isGrabbing = true;
             child = current.Values.First();
             child.transform.parent.SetParent(transform);
         }
@@ -56,6 +58,7 @@ public class Mover : MonoBehaviour
             Vector3? collisionPt = raycast.CastRayToFloor();
             if (collisionPt != null)
             {
+                hitPointOrigin = collisionPt.Value - Main.Instance.transform.localPosition;
                 isDragging = true;
             }
         }
@@ -63,13 +66,17 @@ public class Mover : MonoBehaviour
 
     void Update()
     {
+        if (isGrabbing)
+        {
+            Main.Instance.UpdateCameraLinks();
+        }
+        
         if (isDragging)
         {
-            
              Vector3? floorHit = raycast.CastRayToFloor();
              if (floorHit != null)
              {
-                 Main.Instance.transform.localPosition = floorHit.Value;
+                 Main.Instance.transform.localPosition = floorHit.Value - hitPointOrigin;
              }
         }
     }
@@ -78,6 +85,7 @@ public class Mover : MonoBehaviour
     {
         if (child != null)
         {
+            isGrabbing = false;
             child.transform.parent.SetParent(Main.Instance.transform);
             child = null;
         }
@@ -87,6 +95,7 @@ public class Mover : MonoBehaviour
         if (isDragging)
         {
             isDragging = false;
+            hitPointOrigin = Vector3.zero;
         }
     }
 }
