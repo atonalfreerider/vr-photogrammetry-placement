@@ -211,8 +211,8 @@ public class Main : MonoBehaviour
         }
 
         int jointCount2 = 0;
-        List<Vector3> leadPose = new();
-        List<Vector3> followPose = new();
+        List<Vector3?> leadPose = new();
+        List<Vector3?> followPose = new();
         foreach (List<Ray> jointRays in allRays)
         {
             // find the locus of each of these lists
@@ -222,11 +222,25 @@ public class Main : MonoBehaviour
             Tuple<List<Ray>, List<Ray>> sortedRays = SortRays(jointRays, jointLocus);
 
             // finally set target for re-sorted lists
-            Vector3 leadJointLocus = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item1);
-            leadPose.Add(leadJointLocus - transform.position);
-
-            Vector3 followJointLocus = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item2);
-            followPose.Add(followJointLocus - transform.position);
+            if (sortedRays.Item1.Count > 1)
+            {
+                Vector3 leadJointLocus = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item1);
+                leadPose.Add(leadJointLocus - transform.position);
+            }
+            else
+            {
+                leadPose.Add(null);
+            }
+            
+            if (sortedRays.Item2.Count > 1)
+            {
+                Vector3 followJointLocus = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item2);
+                followPose.Add(followJointLocus - transform.position);
+            }
+            else
+            {
+                followPose.Add(null);
+            }
 
             jointCount2++;
         }

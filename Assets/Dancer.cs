@@ -94,13 +94,16 @@ public class Dancer : MonoBehaviour
         }
     }
 
-    public void Set3DPose(List<Vector3> pose)
+    public void Set3DPose(List<Vector3?> pose)
     {
-        for(int i = 0 ; i< poseMarkers.Count; i++)
+        for (int i = 0; i < poseMarkers.Count; i++)
         {
-            poseMarkers[i].transform.localPosition = pose[i];
+            if (pose[i].HasValue)
+            {
+                poseMarkers[i].transform.localPosition = pose[i].Value;
+            }
         }
-        
+
         UpdateLinks();
     }
 

@@ -158,7 +158,6 @@ public class CameraSetup : MonoBehaviour
         return dancerIdx;
     }
 
-
     public void DrawSpear(int jointNumber)
     {
         Polygon leadTarget = lead.GetJoint(jointNumber);
