@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿#nullable enable
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using VRTKLite.Controllers;
@@ -7,6 +8,7 @@ using VRTKLite.Controllers;
 public class Mover : MonoBehaviour
 {
     ControllerEvents controllerEvents;
+    Raycast raycast;
 
     void Awake()
     {
@@ -15,6 +17,9 @@ public class Mover : MonoBehaviour
         controllerEvents.TriggerReleased += Release;
         controllerEvents.RightButtonPressed += Main.Instance.Advance;
         controllerEvents.LeftButtonPressed += Main.Instance.Reverse;
+
+        raycast = new GameObject("raycast").AddComponent<Raycast>();
+        raycast.transform.SetParent(transform, false);
     }
 
     readonly Dictionary<string, Collider> current = new();
@@ -36,12 +41,36 @@ public class Mover : MonoBehaviour
         }
     }
 
+    bool isDragging = false;
+    Vector3 hitPointOrigin = Vector3.zero;
+
     void Grab()
     {
         if (current.Any())
         {
             child = current.Values.First();
             child.transform.parent.SetParent(transform);
+        }
+        else
+        {
+            Vector3? collisionPt = raycast.CastRayToFloor();
+            if (collisionPt != null)
+            {
+                isDragging = true;
+            }
+        }
+    }
+
+    void Update()
+    {
+        if (isDragging)
+        {
+            
+             Vector3? floorHit = raycast.CastRayToFloor();
+             if (floorHit != null)
+             {
+                 Main.Instance.transform.localPosition = floorHit.Value;
+             }
         }
     }
 
@@ -54,5 +83,10 @@ public class Mover : MonoBehaviour
         }
 
         current.Clear();
+
+        if (isDragging)
+        {
+            isDragging = false;
+        }
     }
 }
