@@ -17,6 +17,8 @@ public class Mover : MonoBehaviour
         controllerEvents.TriggerReleased += Release;
         controllerEvents.RightButtonPressed += Main.Instance.Advance;
         controllerEvents.LeftButtonPressed += Main.Instance.Reverse;
+        controllerEvents.UpButtonPressed += Main.Instance.DrawNextSpear;
+        controllerEvents.DownButtonPressed += Main.Instance.DrawPreviousSpear;
 
         raycast = new GameObject("raycast").AddComponent<Raycast>();
         raycast.transform.SetParent(transform, false);

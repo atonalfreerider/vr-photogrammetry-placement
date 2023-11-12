@@ -14,6 +14,7 @@ public class Main : MonoBehaviour
 
     readonly Dictionary<string, CameraSetup> cameras = new();
     int currentFrameNumber = 0;
+    int currentSpearNumber = 0; 
     public static Main Instance;
     readonly List<StaticLink> cameraLinks = new();
 
@@ -69,6 +70,7 @@ public class Main : MonoBehaviour
                     link.transform.SetParent(transform, false);
                     link.LinkFromTo(cameraSetup.transform, setup.transform);
                     link.gameObject.SetActive(true);
+                    link.SetColor(Color.magenta);
                     cameraLinks.Add(link);
                 }
             }
@@ -132,6 +134,26 @@ public class Main : MonoBehaviour
         }
     }
 
+    public void DrawNextSpear()
+    {
+        currentSpearNumber++;
+        if(currentSpearNumber > 17) currentSpearNumber = 17;
+        foreach (CameraSetup cameraSetup in cameras.Values)
+        {
+            cameraSetup.DrawSpear(currentSpearNumber);
+        }
+    }
+    
+    public void DrawPreviousSpear()
+    {
+        currentSpearNumber--;
+        if(currentSpearNumber < 0) currentSpearNumber = 0;
+        foreach (CameraSetup cameraSetup in cameras.Values)
+        {
+            cameraSetup.DrawSpear(currentSpearNumber);
+        }
+    }
+
     void Update()
     {
         if (Keyboard.current.f1Key.wasPressedThisFrame)
@@ -148,6 +170,16 @@ public class Main : MonoBehaviour
         if (Keyboard.current.leftArrowKey.wasPressedThisFrame)
         {
             Reverse();
+        }
+
+        if (Keyboard.current.upArrowKey.wasPressedThisFrame)
+        {
+            DrawNextSpear();
+        }
+        
+        if(Keyboard.current.downArrowKey.wasPressedThisFrame)
+        {
+            DrawPreviousSpear();
         }
     }
 }
