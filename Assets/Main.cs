@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using Shapes;
 using Shapes.Lines;
@@ -11,9 +12,10 @@ public class Main : MonoBehaviour
 {
     [Header("Parameters")] public string PhotoFolderPath;
 
-    string jsonPath => Path.Combine(PhotoFolderPath, "positions.json");
+    string positionsJsonPath => Path.Combine(PhotoFolderPath, "positions.json");
 
-    readonly Dictionary<string, CameraSetup> cameras = new();
+    readonly Dictionary<int, CameraSetup> cameras = new();
+    readonly Dictionary<int, Polygon> worldAnchors = new();
     int currentFrameNumber = 0;
     int currentSpearNumber = 0;
     public static Main Instance;
@@ -24,7 +26,7 @@ public class Main : MonoBehaviour
 
     Polygon leadGroundFoot;
     Polygon followGroundFoot;
-
+    
     public class ImgMetadata
     {
         public readonly float FocalLength;
@@ -46,6 +48,25 @@ public class Main : MonoBehaviour
 
     void Start()
     {
+        CameraSetup.GroundingFeatures worldAnchorVector2 =
+            JsonConvert.DeserializeObject<CameraSetup.GroundingFeatures>(File.ReadAllText(Path.Combine( PhotoFolderPath,
+                "worldAnchors.json")));
+
+        Vector2 floorCenter = new Vector2(
+            worldAnchorVector2.groundingCoordsX.First(),
+            worldAnchorVector2.groundingCoordsY.First());
+        
+        
+        Polygon origin = Instantiate(PolygonFactory.Instance.icosahedron0);
+        origin.gameObject.SetActive(true);
+        origin.transform.SetParent(transform, false);
+        origin.transform.localScale = Vector3.one * .01f;
+        origin.transform.localPosition = new Vector3(floorCenter.x, 0, floorCenter.y);
+        origin.SetColor(Color.blue);
+        origin.name = "Origin";
+        
+        worldAnchors.Add(0, origin);
+        
         if (!string.IsNullOrEmpty(PhotoFolderPath))
         {
             DirectoryInfo root = new DirectoryInfo(PhotoFolderPath);
@@ -58,7 +79,7 @@ public class Main : MonoBehaviour
             {
                 CameraSetup cameraSetup = new GameObject(dir.Name).AddComponent<CameraSetup>();
                 cameraSetup.Init(dir.FullName, dancersByCamera[count]);
-                cameras.Add(dir.Name, cameraSetup);
+                cameras.Add(int.Parse(dir.Name), cameraSetup);
 
                 cameraSetup.transform.SetParent(transform, false);
                 cameraSetup.transform.Translate(Vector3.back * count * .01f);
@@ -90,9 +111,9 @@ public class Main : MonoBehaviour
         }
 
         string json;
-        if (File.Exists(jsonPath))
+        if (File.Exists(positionsJsonPath))
         {
-            json = File.ReadAllText(jsonPath);
+            json = File.ReadAllText(positionsJsonPath);
         }
         else
         {
@@ -100,10 +121,10 @@ public class Main : MonoBehaviour
             json = jsonPositions != null ? jsonPositions.text : "{}";
         }
 
-        Dictionary<string, PositionAndRotation> fromJsonPics =
-            JsonConvert.DeserializeObject<Dictionary<string, PositionAndRotation>>(json);
+        Dictionary<int, PositionAndRotation> fromJsonPics =
+            JsonConvert.DeserializeObject<Dictionary<int, PositionAndRotation>>(json);
 
-        foreach (KeyValuePair<string, PositionAndRotation> positionAndRotation in fromJsonPics)
+        foreach (KeyValuePair<int, PositionAndRotation> positionAndRotation in fromJsonPics)
         {
             CameraSetup cameraSetup = cameras[positionAndRotation.Key];
             cameraSetup.transform.localPosition =
@@ -111,6 +132,7 @@ public class Main : MonoBehaviour
             cameraSetup.transform.localRotation =
                 positionAndRotation.Value.rotationQuaternion;
             cameraSetup.MovePhotoToDistance(positionAndRotation.Value.focal);
+            cameraSetup.DrawWorldSpears();
         }
 
         UpdateCameraLinks();
@@ -121,6 +143,8 @@ public class Main : MonoBehaviour
         follow.transform.SetParent(transform, false);
 
         Draw3DPose();
+        
+        Debug.Log(GlobalEntropy());
     }
 
     public void Advance()
@@ -277,7 +301,7 @@ public class Main : MonoBehaviour
     {
         if (Keyboard.current.f1Key.wasPressedThisFrame)
         {
-            Serializer serializer = new Serializer(jsonPath);
+            Serializer serializer = new Serializer(positionsJsonPath);
             serializer.Serialize(cameras);
         }
 
@@ -300,5 +324,10 @@ public class Main : MonoBehaviour
         {
             DrawPreviousSpear();
         }
+    }
+
+    float GlobalEntropy()
+    {
+        return cameras.Values.Sum(cameraSetup => cameraSetup.Entropy(cameras, worldAnchors));
     }
 }

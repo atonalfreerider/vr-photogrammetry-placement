@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using JetBrains.Annotations;
+using Newtonsoft.Json;
 using Shapes;
 using Shapes.Lines;
 using UnityEngine;
@@ -21,6 +22,8 @@ public class CameraSetup : MonoBehaviour
 
     StaticLink leadSpear;
     StaticLink followSpear;
+    readonly Dictionary<int, Polygon> cameraMarkers = new();
+    readonly Dictionary<int, Polygon> worldAnchorMarkers = new();
 
     void Awake()
     {
@@ -58,6 +61,36 @@ public class CameraSetup : MonoBehaviour
 
         lead = photo.gameObject.AddComponent<Dancer>();
         follow = photo.gameObject.AddComponent<Dancer>();
+
+        if (File.Exists(Path.Combine(this.dirPath, "grounding.json")))
+        {
+            GroundingFeatures groundingFeatures =
+                JsonConvert.DeserializeObject<GroundingFeatures>(File.ReadAllText(Path.Combine(this.dirPath, "grounding.json")));
+
+            for (int i = 0; i < groundingFeatures.groundingCoordsX.Count; i++)
+            {
+                Vector2 coord = new Vector2(groundingFeatures.groundingCoordsX[i], groundingFeatures.groundingCoordsY[i]);
+                int index = groundingFeatures.indices[i];
+                bool isCamera = groundingFeatures.isCamera[i];
+                
+                Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
+                sphere.gameObject.SetActive(true);
+                sphere.transform.SetParent(photo.transform, false);
+                sphere.transform.localScale = Vector3.one * .01f;
+                sphere.transform.localPosition = new Vector3(coord.x, 0, coord.y);
+
+                if (isCamera)
+                {
+                    cameraMarkers.Add(index, sphere);
+                    sphere.SetColor(Color.magenta);
+                }
+                else
+                {
+                    worldAnchorMarkers.Add(index, sphere);
+                    sphere.SetColor(Color.blue);
+                }
+            }
+        }
     }
 
     public void SetFrame(int frameNumber)
@@ -129,7 +162,7 @@ public class CameraSetup : MonoBehaviour
             Vector2 rAnkle = pose2D[(int)Joints.R_Ankle];
             float height = nose.y -
                            Math.Min(lAnkle.y, rAnkle.y);
-            if (height < 150)
+            if (height < 100)
             {
                 noseCount++;
                 continue; // filter out sitting
@@ -147,7 +180,7 @@ public class CameraSetup : MonoBehaviour
             if (distance < minD)
             {
                 if (dancer.lastNosePosition.magnitude <= float.Epsilon || // very first
-                    distance < 50)   // don't let big frame jumps
+                    distance < 70)   // don't let big frame jumps
                 {
                     minD = distance;
                     dancerIdx = idx;
@@ -207,5 +240,59 @@ public class CameraSetup : MonoBehaviour
     {
         focal = d;
         photo.transform.localPosition = new Vector3(0, 0, focal);
+    }
+
+    public void DrawWorldSpears()
+    {
+        foreach (KeyValuePair<int,Polygon> keyValuePair in worldAnchorMarkers)
+        {
+            Polygon worldAnchor = keyValuePair.Value;
+            
+            StaticLink staticLink = Instantiate(StaticLink.prototypeStaticLink);
+            staticLink.gameObject.SetActive(true);
+            staticLink.transform.SetParent(transform, false);
+            staticLink.LinkFromTo(transform, worldAnchor.transform);
+            staticLink.UpdateLink();
+            staticLink.SetLength(10f);
+            staticLink.SetColor(Color.blue);
+        }
+    }
+
+    public float Entropy(Dictionary<int, CameraSetup> otherCameras, Dictionary<int, Polygon> worldAnchorPositions)
+    {
+        float entropy = 0;
+        foreach ((int idx, Polygon cameraMarker) in cameraMarkers)
+        {
+            CameraSetup otherSetup = otherCameras[idx];
+            Vector3 measure = otherSetup.transform.position - transform.position;
+            Vector3 anch = cameraMarker.transform.position - transform.position;
+            entropy += Vector3.Angle(anch, measure);
+        }
+
+        foreach ((int idx, Polygon worldMarker) in worldAnchorMarkers)
+        {
+            Vector3 vectorToAnchor = worldAnchorPositions[idx].transform.position - transform.position;
+            Vector3 vectorToMarker = worldMarker.transform.position - transform.position;
+            entropy += Vector3.Angle(vectorToAnchor, vectorToMarker);
+        }
+
+        return entropy;
+    }
+    
+    [Serializable]
+    public class GroundingFeatures
+    {
+        public List<float> groundingCoordsX;
+        public List<float> groundingCoordsY;
+        public List<int> indices;
+        public List<bool> isCamera;
+        
+        public GroundingFeatures(List<float> groundingCoordsX, List<float> groundingCoordsY, List<int> indices, List<bool> isCamera)
+        {
+            this.groundingCoordsX = groundingCoordsX;
+            this.groundingCoordsY = groundingCoordsY;
+            this.indices = indices;
+            this.isCamera = isCamera;
+        }
     }
 }

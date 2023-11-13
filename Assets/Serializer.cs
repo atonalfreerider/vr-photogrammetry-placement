@@ -96,14 +96,14 @@ public class Serializer
         csvPath = path;
     }
 
-    public void Serialize(Dictionary<string, CameraSetup> pics)
+    public void Serialize(Dictionary<int, CameraSetup> pics)
     {
         if (File.Exists(jsonPath))
         {
             File.Delete(jsonPath);
         }
 
-        Dictionary<string, PositionAndRotation> picsPos = pics.ToDictionary(
+        Dictionary<int, PositionAndRotation> picsPos = pics.ToDictionary(
             x => x.Key,
             x => new PositionAndRotation(
                 x.Value.transform.localPosition,
