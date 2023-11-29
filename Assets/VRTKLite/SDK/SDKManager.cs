@@ -70,27 +70,22 @@ namespace VRTKLite.SDK
         {
             // iterate through setups
             List<XRInputSubsystem> xrInputSubsystems = new List<XRInputSubsystem>();
-            SubsystemManager.GetSubsystems(xrInputSubsystems);
-
-            foreach (XRInputSubsystem xrInputSubsystem in xrInputSubsystems)
-            {
-                xrInputSubsystem.TrySetTrackingOriginMode(TrackingOriginModeFlags.Floor);
-            }
+            SubsystemManager.GetSubsystems(xrInputSubsystems);           
 
             List<XRDisplaySubsystem> xrDisplaySubsystems = new List<XRDisplaySubsystem>();
             SubsystemManager.GetSubsystems(xrDisplaySubsystems);
 
             foreach (XRDisplaySubsystem xrDisplay in xrDisplaySubsystems)
             {
-                if (xrDisplay.SubsystemDescriptor.id == "OpenXR Display")
+                if (xrDisplay.subsystemDescriptor.id == "OpenXR Display")
                 {
                     // special case...for some reason xrDisplay.running is false. this might change in a future release
-                    LoadHeadsetFromName(xrDisplay.SubsystemDescriptor.id);
+                    LoadHeadsetFromName(xrDisplay.subsystemDescriptor.id);
                     return;
                 }
 
                 if (xrDisplay.running &&
-                    LoadHeadsetFromName(xrDisplay.SubsystemDescriptor.id))
+                    LoadHeadsetFromName(xrDisplay.subsystemDescriptor.id))
                 {
                     return;
                 }
