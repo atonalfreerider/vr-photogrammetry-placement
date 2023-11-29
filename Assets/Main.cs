@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -28,6 +29,8 @@ public class Main : MonoBehaviour
 
     Polygon leadGroundFoot;
     Polygon followGroundFoot;
+
+    public CameraSetup? currentlyTargetedCameraSetup;
 
     enum InteractionMode
     {
@@ -225,6 +228,22 @@ public class Main : MonoBehaviour
         {
             cameraSetup.DrawSpear(currentSpearNumber);
         }
+    }
+
+    public void MarkPoseAsLead()
+    {
+        if (interactionMode != InteractionMode.PoseAlignment ||
+            currentlyTargetedCameraSetup == null) return;
+        
+        currentlyTargetedCameraSetup.MarkPoseAs(Role.Lead);
+    }
+
+    public void MarkPoseAsFollow()
+    {
+        if (interactionMode != InteractionMode.PoseAlignment ||
+            currentlyTargetedCameraSetup == null) return;
+        
+        currentlyTargetedCameraSetup.MarkPoseAs(Role.Follow);
     }
 
     void Draw3DPose()

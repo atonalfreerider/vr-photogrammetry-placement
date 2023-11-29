@@ -17,8 +17,12 @@ public class Mover : MonoBehaviour
         controllerEvents.TriggerReleased += Release;
         controllerEvents.RightButtonPressed += Main.Instance.Advance;
         controllerEvents.LeftButtonPressed += Main.Instance.Reverse;
+        
         controllerEvents.UpButtonPressed += Main.Instance.DrawNextSpear;
+        controllerEvents.UpButtonPressed += Main.Instance.MarkPoseAsLead;
+        
         controllerEvents.DownButtonPressed += Main.Instance.DrawPreviousSpear;
+        controllerEvents.DownButtonPressed += Main.Instance.MarkPoseAsFollow;
 
         raycast = new GameObject("raycast").AddComponent<Raycast>();
         raycast.transform.SetParent(transform, false);
@@ -27,17 +31,15 @@ public class Mover : MonoBehaviour
     readonly Dictionary<string, Collider> current = new();
     Collider? child;
 
-    bool isDragging = false;
+    bool isDraggingFloor = false;
     Vector3 hitPointOrigin = Vector3.zero;
     bool isGrabbing = false;
-    BoxCollider? currentPhoto;
+    CameraSetup? currentPhoto;
+    BoxCollider? currentMarker;
 
     void OnTriggerEnter(Collider other)
     {
-        if (!current.ContainsKey(other.name))
-        {
-            current.Add(other.name, other);
-        }
+        current.TryAdd(other.name, other);
     }
 
     void OnTriggerExit(Collider other)
@@ -57,8 +59,18 @@ public class Mover : MonoBehaviour
             switch (child)
             {
                 case BoxCollider boxCollider:
-                    // photo focul pull
-                    currentPhoto = boxCollider;
+                    // photo focal pull or marker 2D move
+                    if (boxCollider.transform.parent.GetComponent<CameraSetup>())
+                    {
+                        currentPhoto = boxCollider.transform.parent.GetComponent<CameraSetup>();
+                    }
+                    else
+                    {
+                        currentMarker = boxCollider;
+                        Dancer myDancer = currentMarker.transform.parent.GetComponent<Dancer>();
+                        
+                    }
+
                     break;
                 case SphereCollider sphereCollider:
                     // move whole camera
@@ -73,7 +85,7 @@ public class Mover : MonoBehaviour
             if (collisionPt != null)
             {
                 hitPointOrigin = collisionPt.Value - Main.Instance.transform.localPosition;
-                isDragging = true;
+                isDraggingFloor = true;
             }
         }
     }
@@ -84,14 +96,22 @@ public class Mover : MonoBehaviour
         {
             if (currentPhoto != null)
             {
-                float d = Vector3.Dot((transform.position - currentPhoto.transform.parent.position), Vector3.forward);
-                currentPhoto.transform.parent.GetComponent<CameraSetup>().MovePhotoToDistance(d);
+                float d = Vector3.Dot(
+                    transform.position - currentPhoto.transform.position,
+                    Vector3.forward);
+
+                currentPhoto.MovePhotoToDistance(d);
             }
-            
+
+            if (currentMarker != null)
+            {
+                // TODO move marker in XY plane
+            }
+
             Main.Instance.UpdateCameraLinks();
         }
 
-        if (isDragging)
+        if (isDraggingFloor)
         {
             Vector3? floorHit = raycast.CastRayToFloor();
             if (floorHit != null)
@@ -106,12 +126,14 @@ public class Mover : MonoBehaviour
         if (child != null)
         {
             isGrabbing = false;
-            
+
             switch (child)
             {
                 case BoxCollider boxCollider:
                     // photo focul pull
                     currentPhoto = null;
+                    currentMarker = null;
+                    Main.Instance.currentlyTargetedCameraSetup = null;
                     break;
                 case SphereCollider sphereCollider:
                     // move whole camera
@@ -124,9 +146,9 @@ public class Mover : MonoBehaviour
 
         current.Clear();
 
-        if (isDragging)
+        if (isDraggingFloor)
         {
-            isDragging = false;
+            isDraggingFloor = false;
             hitPointOrigin = Vector3.zero;
         }
     }

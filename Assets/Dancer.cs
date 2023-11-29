@@ -50,6 +50,7 @@ public class Dancer : MonoBehaviour
             sphere.gameObject.SetActive(false);
             sphere.transform.localScale = Vector3.one * .005f;
             sphere.transform.SetParent(transform, false);
+            sphere.name = "MARKER: " + j;
             poseMarkers.Add(sphere);
         }
 
@@ -84,10 +85,10 @@ public class Dancer : MonoBehaviour
         return staticLink;
     }
 
-    public void SetRole(Role role)
+    public void SetRole(Role setRole)
     {
-        this.role = role;
-        Color dancerColor = this.role switch
+        role = setRole;
+        Color dancerColor = role switch
         {
             Role.Lead => Color.red,
             Role.Follow => Color.magenta,
@@ -104,7 +105,6 @@ public class Dancer : MonoBehaviour
         {
             staticLink.SetColor(dancerColor);
         }
-        
     }
 
     void UpdateLinks()

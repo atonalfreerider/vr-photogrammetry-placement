@@ -1,8 +1,7 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using JetBrains.Annotations;
 using Newtonsoft.Json;
 using Shapes;
 using Shapes.Lines;
@@ -11,10 +10,14 @@ using UnityEngine;
 public class CameraSetup : MonoBehaviour
 {
     Rectangle photo;
+    Polygon focalSphere;
     List<List<List<Vector2>>> dancersByFrame = new();
     string dirPath;
 
-    readonly List<Dancer> dancers = new();
+    /// <summary>
+    /// N number of figures to be drawn per frame. They have no persistence.
+    /// </summary>
+    readonly List<Dancer> unknownFigures = new();
     
     Dancer lead;
     Dancer follow;
@@ -31,7 +34,7 @@ public class CameraSetup : MonoBehaviour
 
     void Awake()
     {
-        Polygon focalSphere = Instantiate(PolygonFactory.Instance.icosahedron0);
+        focalSphere = Instantiate(PolygonFactory.Instance.icosahedron0);
         focalSphere.gameObject.SetActive(true);
         focalSphere.gameObject.AddComponent<SphereCollider>();
         focalSphere.transform.SetParent(transform, false);
@@ -51,21 +54,24 @@ public class CameraSetup : MonoBehaviour
     }
 
     public void Init(
-        string dirPath, 
+        string initDirPath, 
         List<List<List<Vector2>>> posesPerFrame, 
         SqliteInput.DbDancer leadPerFrame, 
         SqliteInput.DbDancer followPerFrame)
     {
-        this.dirPath = dirPath;
+        dirPath = initDirPath;
         dancersByFrame = posesPerFrame;
 
         // first time
         photo = Instantiate(NewCube.textureRectPoly, transform, false);
+        photo.name = "PHOTO: " + dirPath;
         photo.gameObject.SetActive(true);
         photo.transform.SetParent(transform, false);
         photo.AddCollider();
 
         photo.transform.Rotate(Vector3.right, -90);
+
+        focalSphere.name = "SPHERE: " + dirPath;
 
         lead = photo.gameObject.AddComponent<Dancer>();
         lead.SetRole(Role.Lead);
@@ -75,34 +81,10 @@ public class CameraSetup : MonoBehaviour
         follow.SetRole(Role.Follow);
         follow.posesByFrame = followPerFrame.PosesByFrame;
 
-        if (File.Exists(Path.Combine(this.dirPath, "grounding.json")))
+        string jsonPath = Path.Combine(dirPath, "grounding.json");
+        if (File.Exists(jsonPath))
         {
-            GroundingFeatures groundingFeatures =
-                JsonConvert.DeserializeObject<GroundingFeatures>(File.ReadAllText(Path.Combine(this.dirPath, "grounding.json")));
-
-            for (int i = 0; i < groundingFeatures.groundingCoordsX.Count; i++)
-            {
-                Vector2 coord = new Vector2(groundingFeatures.groundingCoordsX[i], groundingFeatures.groundingCoordsY[i]);
-                int index = groundingFeatures.indices[i];
-                bool isCamera = groundingFeatures.isCamera[i];
-                
-                Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
-                sphere.gameObject.SetActive(true);
-                sphere.transform.SetParent(photo.transform, false);
-                sphere.transform.localScale = Vector3.one * .01f;
-                sphere.transform.localPosition = new Vector3(coord.x, 0, coord.y);
-
-                if (isCamera)
-                {
-                    cameraMarkers.Add(index, sphere);
-                    sphere.SetColor(Color.yellow);
-                }
-                else
-                {
-                    worldAnchorMarkers.Add(index, sphere);
-                    sphere.SetColor(Color.blue);
-                }
-            }
+            LoadGroundingFeatures(jsonPath);
         }
     }
 
@@ -129,7 +111,7 @@ public class CameraSetup : MonoBehaviour
 
     void LoadPose(int frameNumber)
     {
-        foreach (Dancer dancer in dancers)
+        foreach (Dancer dancer in unknownFigures)
         {
             dancer.SetVisible(false);
         }
@@ -137,14 +119,14 @@ public class CameraSetup : MonoBehaviour
         List<List<Vector2>> frame = dancersByFrame[frameNumber];
         for (int i = 0; i < frame.Count; i++)
         {
-            if (dancers.Count <= i)
+            if (unknownFigures.Count <= i)
             {
                 Dancer dancer = photo.gameObject.AddComponent<Dancer>();
                 dancer.SetRole(Role.Unknown);
-                dancers.Add(dancer);
+                unknownFigures.Add(dancer);
             }
 
-            Dancer dancerAtI = dancers[i];
+            Dancer dancerAtI = unknownFigures[i];
             dancerAtI.SetVisible(true);
             dancerAtI.Set2DPose(frame[i]);
             dancerAtI.SetPoseMarkerColliders(poseMarkerCollidersOn);
@@ -225,11 +207,17 @@ public class CameraSetup : MonoBehaviour
     public void SetCollider(bool isOn)
     {
         photo.GetComponent<BoxCollider>().enabled = isOn;
+        focalSphere.GetComponent<SphereCollider>().enabled = isOn;
     }
 
     public void SetMarkers(bool isOn)
     {
         poseMarkerCollidersOn = isOn;
+    }
+
+    public void MarkPoseAs(Role role)
+    {
+        
     }
 
     public float Entropy(Dictionary<int, CameraSetup> otherCameras, Dictionary<int, Polygon> worldAnchorPositions)
@@ -251,6 +239,39 @@ public class CameraSetup : MonoBehaviour
         }
 
         return entropy;
+    }
+
+    void LoadGroundingFeatures(string jsonPath)
+    {
+        GroundingFeatures groundingFeatures = JsonConvert.DeserializeObject<GroundingFeatures>(
+            File.ReadAllText(jsonPath));
+
+        for (int i = 0; i < groundingFeatures.groundingCoordsX.Count; i++)
+        {
+            Vector2 coord = new Vector2(
+                groundingFeatures.groundingCoordsX[i],
+                groundingFeatures.groundingCoordsY[i]);
+                
+            int index = groundingFeatures.indices[i];
+            bool isCamera = groundingFeatures.isCamera[i];
+                
+            Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
+            sphere.gameObject.SetActive(true);
+            sphere.transform.SetParent(photo.transform, false);
+            sphere.transform.localScale = Vector3.one * .01f;
+            sphere.transform.localPosition = new Vector3(coord.x, 0, coord.y);
+
+            if (isCamera)
+            {
+                cameraMarkers.Add(index, sphere);
+                sphere.SetColor(Color.yellow);
+            }
+            else
+            {
+                worldAnchorMarkers.Add(index, sphere);
+                sphere.SetColor(Color.blue);
+            }
+        }
     }
     
     [Serializable]
