@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Shapes;
 using Shapes.Lines;
 using UnityEngine;
@@ -24,11 +25,18 @@ public enum Joints
     R_Ankle = 16
 }
 
+public enum Role{
+    Lead = 0,
+    Follow = 1,
+    Unknown = 2
+}
+
 public class Dancer : MonoBehaviour
 {
     readonly List<Polygon> poseMarkers = new();
     readonly List<StaticLink> jointLinks = new();
-    public Vector2 lastNosePosition = Vector3.zero;
+
+    Role role;
 
     void Awake()
     {
@@ -70,6 +78,29 @@ public class Dancer : MonoBehaviour
         staticLink.LinkFromTo(joints[index1].transform, joints[index2].transform);
         staticLink.SetColor(Viridis.ViridisColor(index1 / 17f));
         return staticLink;
+    }
+
+    public void SetRole(Role role)
+    {
+        this.role = role;
+        Color dancerColor = this.role switch
+        {
+            Role.Lead => Color.red,
+            Role.Follow => Color.magenta,
+            Role.Unknown => Color.grey,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+        foreach (Polygon poseMarker in poseMarkers)
+        {
+            poseMarker.SetColor(dancerColor);
+        }
+        
+        foreach (StaticLink staticLink in jointLinks)
+        {
+            staticLink.SetColor(dancerColor);
+        }
+        
     }
 
     void UpdateLinks()

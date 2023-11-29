@@ -19,11 +19,10 @@ public class SqliteInput : MonoBehaviour
 
         string connectionString = "URI=file:" + DbPath;
 
-
         int lastCameraId = -1;
         int lastFrameId = -1;
-        int lastDancerId = -1;
-        
+        int poseCounter = -1;
+
         List<List<List<Vector2>>> frameSequence = new();
         List<List<Vector2>> dancersInFrame = new();
         List<Vector2> currentPose = new();
@@ -33,19 +32,19 @@ public class SqliteInput : MonoBehaviour
 
         List<string> columnNames = new List<string>
         {
-            "id", "dancer_id", "camera_id", "frame_id", "position_x", "position_y"
+            "id", "camera_id", "frame_id", "position_x", "position_y"
         };
 
         using IDbCommand cmd = conn.CreateCommand();
-        cmd.CommandText = CommandString(columnNames, "cache");
+        cmd.CommandText = CommandString(columnNames, "cache_poses");
 
         using IDataReader reader = cmd.ExecuteReader();
         Dictionary<string, int> indexes = ColumnIndexes(reader, columnNames);
         while (reader.Read())
         {
             int frameId = reader.GetInt32(indexes["frame_id"]);
-            int dancerId = reader.GetInt32(indexes["dancer_id"]);
             int cameraId = reader.GetInt32(indexes["camera_id"]);
+            poseCounter++;
 
             if (frameId > FrameMax)
             {
@@ -54,7 +53,7 @@ public class SqliteInput : MonoBehaviour
 
             Vector2 position = new(
                 reader.GetFloat(indexes["position_x"]),
-                reader.GetFloat(indexes["position_y"]));
+                -reader.GetFloat(indexes["position_y"]));
 
             if (cameraId > lastCameraId)
             {
@@ -79,12 +78,10 @@ public class SqliteInput : MonoBehaviour
                 lastFrameId = frameId;
             }
 
-            if (lastDancerId != dancerId)
+            if (poseCounter % 17 == 0)
             {
-                currentPose = new List<Vector2>();
                 dancersInFrame.Add(currentPose);
-
-                lastDancerId = dancerId;
+                currentPose = new List<Vector2>();
             }
 
             currentPose.Add(position);

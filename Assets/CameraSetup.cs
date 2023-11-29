@@ -14,6 +14,8 @@ public class CameraSetup : MonoBehaviour
     List<List<List<Vector2>>> dancersByFrame = new();
     string dirPath;
 
+    List<Dancer> dancers = new();
+    
     Dancer lead;
     Dancer follow;
 
@@ -46,7 +48,7 @@ public class CameraSetup : MonoBehaviour
         followSpear.SetColor(Color.red);
     }
 
-    public void Init(string dirPath, [ItemCanBeNull] List<List<List<Vector2>>> posesPerFrame)
+    public void Init(string dirPath, List<List<List<Vector2>>> posesPerFrame)
     {
         this.dirPath = dirPath;
         dancersByFrame = posesPerFrame;
@@ -60,7 +62,9 @@ public class CameraSetup : MonoBehaviour
         photo.transform.Rotate(Vector3.right, -90);
 
         lead = photo.gameObject.AddComponent<Dancer>();
+        lead.SetRole(Role.Lead);
         follow = photo.gameObject.AddComponent<Dancer>();
+        follow.SetRole(Role.Follow);
 
         if (File.Exists(Path.Combine(this.dirPath, "grounding.json")))
         {
@@ -82,7 +86,7 @@ public class CameraSetup : MonoBehaviour
                 if (isCamera)
                 {
                     cameraMarkers.Add(index, sphere);
-                    sphere.SetColor(Color.magenta);
+                    sphere.SetColor(Color.yellow);
                 }
                 else
                 {
@@ -116,79 +120,25 @@ public class CameraSetup : MonoBehaviour
 
     void LoadPose(int frameNumber)
     {
+        foreach (Dancer dancer in dancers)
+        {
+            dancer.SetVisible(false);
+        }
+        
         List<List<Vector2>> frame = dancersByFrame[frameNumber];
-
-        int leadIndex = DancerBestIndex(frame, lead);
-
-        List<List<Vector2>> secondFrameCheck = new();
-        if (leadIndex != -1)
+        for (int i = 0; i < frame.Count; i++)
         {
-            lead.SetVisible(true);
-            lead.Set2DPose(frame[leadIndex]);
-            lead.lastNosePosition = frame[leadIndex][(int)Joints.Nose];
-            secondFrameCheck.AddRange(frame.Where((_, i) => i != leadIndex));
-        }
-        else
-        {
-            secondFrameCheck = frame;
-            lead.SetVisible(false);
-        }
-
-        int followIndex = DancerBestIndex(secondFrameCheck, follow);
-
-        if (followIndex != -1)
-        {
-            follow.SetVisible(true);
-            follow.Set2DPose(secondFrameCheck[followIndex]);
-            follow.lastNosePosition = secondFrameCheck[followIndex][(int)Joints.Nose];
-        }
-        else
-        {
-            follow.SetVisible(false);
-        }
-    }
-
-    /// <summary>
-    /// Attempt to sort based on nose distance continuity
-    /// </summary>
-    static int DancerBestIndex(List<List<Vector2>> frame, Dancer dancer)
-    {
-        Dictionary<int, Vector2> allNoses = new();
-        int noseCount = 0;
-        foreach (List<Vector2> pose2D in frame)
-        {
-            Vector2 nose = pose2D[(int)Joints.Nose];
-            Vector2 lAnkle = pose2D[(int)Joints.L_Ankle];
-            Vector2 rAnkle = pose2D[(int)Joints.R_Ankle];
-            float height = nose.y -
-                           Math.Min(lAnkle.y, rAnkle.y);
-            if (height < 100)
+            if (dancers.Count <= i)
             {
-                noseCount++;
-                continue; // filter out sitting
+                Dancer dancer = photo.gameObject.AddComponent<Dancer>();
+                dancer.SetRole(Role.Unknown);
+                dancers.Add(dancer);
             }
 
-            allNoses.Add(noseCount, nose);
-            noseCount++;
+            Dancer dancerAtI = dancers[i];
+            dancerAtI.SetVisible(true);
+            dancerAtI.Set2DPose(frame[i]);
         }
-
-        int dancerIdx = -1;
-        float minD = 1000;
-        foreach ((int idx, Vector2 nose) in allNoses)
-        {
-            float distance = Vector2.Distance(nose, dancer.lastNosePosition);
-            if (distance < minD)
-            {
-                if (dancer.lastNosePosition.magnitude <= float.Epsilon || // very first
-                    distance < 70)   // don't let big frame jumps
-                {
-                    minD = distance;
-                    dancerIdx = idx;
-                }
-            }
-        }
-
-        return dancerIdx;
     }
 
     public void DrawSpear(int jointNumber)
