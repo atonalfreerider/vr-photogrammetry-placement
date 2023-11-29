@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,7 +18,7 @@ public class CameraSetup : MonoBehaviour
     /// N number of figures to be drawn per frame. They have no persistence.
     /// </summary>
     readonly List<Dancer> unknownFigures = new();
-    
+
     Dancer lead;
     Dancer follow;
 
@@ -31,6 +31,7 @@ public class CameraSetup : MonoBehaviour
     readonly Dictionary<int, Polygon> worldAnchorMarkers = new();
 
     bool poseMarkerCollidersOn = false;
+    public Plane CurrentPlane => new(photo.transform.up, photo.transform.position);
 
     void Awake()
     {
@@ -54,9 +55,9 @@ public class CameraSetup : MonoBehaviour
     }
 
     public void Init(
-        string initDirPath, 
-        List<List<List<Vector2>>> posesPerFrame, 
-        SqliteInput.DbDancer leadPerFrame, 
+        string initDirPath,
+        List<List<List<Vector2>>> posesPerFrame,
+        SqliteInput.DbDancer leadPerFrame,
         SqliteInput.DbDancer followPerFrame)
     {
         dirPath = initDirPath;
@@ -67,7 +68,7 @@ public class CameraSetup : MonoBehaviour
         photo.name = "PHOTO: " + dirPath;
         photo.gameObject.SetActive(true);
         photo.transform.SetParent(transform, false);
-        photo.AddCollider();
+        photo.AddCollider(new Vector3(photo.transform.localScale.x, .1f, photo.transform.localScale.z));
 
         photo.transform.Rotate(Vector3.right, -90);
 
@@ -76,7 +77,7 @@ public class CameraSetup : MonoBehaviour
         lead = photo.gameObject.AddComponent<Dancer>();
         lead.SetRole(Role.Lead);
         lead.posesByFrame = leadPerFrame.PosesByFrame;
-        
+
         follow = photo.gameObject.AddComponent<Dancer>();
         follow.SetRole(Role.Follow);
         follow.posesByFrame = followPerFrame.PosesByFrame;
@@ -115,7 +116,7 @@ public class CameraSetup : MonoBehaviour
         {
             dancer.SetVisible(false);
         }
-        
+
         List<List<Vector2>> frame = dancersByFrame[frameNumber];
         for (int i = 0; i < frame.Count; i++)
         {
@@ -132,9 +133,8 @@ public class CameraSetup : MonoBehaviour
             dancerAtI.SetPoseMarkerColliders(poseMarkerCollidersOn);
         }
         
-        // TODO activate
-        //lead.Set2DPose(frameNumber);
-        //follow.Set2DPose(frameNumber);
+        lead.Set2DPose(frameNumber);
+        follow.Set2DPose(frameNumber);
     }
 
     public void DrawSpear(int jointNumber)
@@ -190,10 +190,10 @@ public class CameraSetup : MonoBehaviour
 
     public void DrawWorldSpears()
     {
-        foreach (KeyValuePair<int,Polygon> keyValuePair in worldAnchorMarkers)
+        foreach (KeyValuePair<int, Polygon> keyValuePair in worldAnchorMarkers)
         {
             Polygon worldAnchor = keyValuePair.Value;
-            
+
             StaticLink staticLink = Instantiate(StaticLink.prototypeStaticLink);
             staticLink.gameObject.SetActive(true);
             staticLink.transform.SetParent(transform, false);
@@ -213,11 +213,35 @@ public class CameraSetup : MonoBehaviour
     public void SetMarkers(bool isOn)
     {
         poseMarkerCollidersOn = isOn;
+        foreach (Dancer unknownFigure in unknownFigures)
+        {
+            unknownFigure.SetPoseMarkerColliders(poseMarkerCollidersOn);
+        }
     }
 
-    public void MarkPoseAs(Role role)
+    public void CopyPoseAtFrameTo(Dancer targetedDancer, Role role, int currentFrameNumber)
     {
+        switch (role)
+        {
+            case Role.Lead:
+                lead.posesByFrame[currentFrameNumber] = targetedDancer.Get2DPose();
+                lead.Set2DPose(currentFrameNumber);
+                lead.SetVisible(true);
+
+                break;
+            case Role.Follow:
+                follow.posesByFrame[currentFrameNumber] = targetedDancer.Get2DPose();
+                follow.Set2DPose(currentFrameNumber);
+                follow.SetVisible(true);
+
+                break;
+            case Role.Unknown:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(role), role, null);
+        }
         
+        targetedDancer.SetVisible(false);
     }
 
     public float Entropy(Dictionary<int, CameraSetup> otherCameras, Dictionary<int, Polygon> worldAnchorPositions)
@@ -241,6 +265,8 @@ public class CameraSetup : MonoBehaviour
         return entropy;
     }
 
+    public Vector3 PhotoScale => photo.transform.localScale;
+
     void LoadGroundingFeatures(string jsonPath)
     {
         GroundingFeatures groundingFeatures = JsonConvert.DeserializeObject<GroundingFeatures>(
@@ -251,10 +277,10 @@ public class CameraSetup : MonoBehaviour
             Vector2 coord = new Vector2(
                 groundingFeatures.groundingCoordsX[i],
                 groundingFeatures.groundingCoordsY[i]);
-                
+
             int index = groundingFeatures.indices[i];
             bool isCamera = groundingFeatures.isCamera[i];
-                
+
             Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
             sphere.gameObject.SetActive(true);
             sphere.transform.SetParent(photo.transform, false);
@@ -273,7 +299,7 @@ public class CameraSetup : MonoBehaviour
             }
         }
     }
-    
+
     [Serializable]
     public class GroundingFeatures
     {
@@ -281,8 +307,9 @@ public class CameraSetup : MonoBehaviour
         public List<float> groundingCoordsY;
         public List<int> indices;
         public List<bool> isCamera;
-        
-        public GroundingFeatures(List<float> groundingCoordsX, List<float> groundingCoordsY, List<int> indices, List<bool> isCamera)
+
+        public GroundingFeatures(List<float> groundingCoordsX, List<float> groundingCoordsY, List<int> indices,
+            List<bool> isCamera)
         {
             this.groundingCoordsX = groundingCoordsX;
             this.groundingCoordsY = groundingCoordsY;

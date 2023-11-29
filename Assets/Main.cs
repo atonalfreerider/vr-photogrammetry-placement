@@ -12,6 +12,8 @@ using UnityEngine.InputSystem;
 public class Main : MonoBehaviour
 {
     [Header("Parameters")] public string PhotoFolderPath;
+    
+    public Mover mover;
 
     string positionsJsonPath => Path.Combine(PhotoFolderPath, "positions.json");
 
@@ -21,7 +23,7 @@ public class Main : MonoBehaviour
     int currentSpearNumber = 0;
     public static Main Instance;
     readonly List<StaticLink> cameraLinks = new();
-    
+
     InteractionMode interactionMode = InteractionMode.PoseAlignment;
 
     Dancer lead;
@@ -30,14 +32,14 @@ public class Main : MonoBehaviour
     Polygon leadGroundFoot;
     Polygon followGroundFoot;
 
-    public CameraSetup? currentlyTargetedCameraSetup;
-
+    Polygon? currentHighlightedMarker;
+    
     enum InteractionMode
     {
         PhotoAlignment = 0,
         PoseAlignment = 1
     }
-    
+
     public class ImgMetadata
     {
         public readonly float FocalLength;
@@ -60,14 +62,14 @@ public class Main : MonoBehaviour
     void Start()
     {
         CameraSetup.GroundingFeatures worldAnchorVector2 =
-            JsonConvert.DeserializeObject<CameraSetup.GroundingFeatures>(File.ReadAllText(Path.Combine( PhotoFolderPath,
+            JsonConvert.DeserializeObject<CameraSetup.GroundingFeatures>(File.ReadAllText(Path.Combine(PhotoFolderPath,
                 "worldAnchors.json")));
 
         Vector2 floorCenter = new Vector2(
             worldAnchorVector2.groundingCoordsX.First(),
             worldAnchorVector2.groundingCoordsY.First());
-        
-        
+
+
         Polygon origin = Instantiate(PolygonFactory.Instance.icosahedron0);
         origin.gameObject.SetActive(true);
         origin.transform.SetParent(transform, false);
@@ -75,28 +77,28 @@ public class Main : MonoBehaviour
         origin.transform.localPosition = new Vector3(floorCenter.x, 0, floorCenter.y);
         origin.SetColor(Color.blue);
         origin.name = "Origin";
-        
+
         worldAnchors.Add(0, origin);
-        
+
         if (!string.IsNullOrEmpty(PhotoFolderPath))
         {
             DirectoryInfo root = new DirectoryInfo(PhotoFolderPath);
 
             int count = 0;
             SqliteInput sqliteInput = GetComponent<SqliteInput>();
-            
+
             List<List<List<List<Vector2>>>> dancersByCamera = sqliteInput.ReadFrameFromDb();
-            List<SqliteInput.DbDancer> leadsByCamera = sqliteInput.ReadDancerFromAllCameras(Role.Lead); 
+            List<SqliteInput.DbDancer> leadsByCamera = sqliteInput.ReadDancerFromAllCameras(Role.Lead);
             List<SqliteInput.DbDancer> followsByCamera = sqliteInput.ReadDancerFromAllCameras(Role.Follow);
-            
+
             List<CameraSetup> cameraSetups = new();
             foreach (DirectoryInfo dir in root.EnumerateDirectories())
             {
                 CameraSetup cameraSetup = new GameObject(dir.Name).AddComponent<CameraSetup>();
                 cameraSetup.Init(
-                    dir.FullName, 
+                    dir.FullName,
                     dancersByCamera[count],
-                    leadsByCamera[count], 
+                    leadsByCamera[count],
                     followsByCamera[count]);
                 cameras.Add(int.Parse(dir.Name), cameraSetup);
 
@@ -162,9 +164,9 @@ public class Main : MonoBehaviour
         follow.transform.SetParent(transform, false);
 
         Draw3DPose();
-        
+
         Debug.Log(GlobalEntropy());
-        
+
         SetInteractionMode(InteractionMode.PoseAlignment);
     }
 
@@ -207,7 +209,7 @@ public class Main : MonoBehaviour
     public void DrawNextSpear()
     {
         if (interactionMode != InteractionMode.PhotoAlignment) return;
-        
+
         currentSpearNumber++;
         if (currentSpearNumber > 17) currentSpearNumber = 17;
 
@@ -220,7 +222,7 @@ public class Main : MonoBehaviour
     public void DrawPreviousSpear()
     {
         if (interactionMode != InteractionMode.PhotoAlignment) return;
-        
+
         currentSpearNumber--;
         if (currentSpearNumber < 0) currentSpearNumber = 0;
 
@@ -232,18 +234,23 @@ public class Main : MonoBehaviour
 
     public void MarkPoseAsLead()
     {
-        if (interactionMode != InteractionMode.PoseAlignment ||
-            currentlyTargetedCameraSetup == null) return;
-        
-        currentlyTargetedCameraSetup.MarkPoseAs(Role.Lead);
+        MarkRole(Role.Lead);
     }
 
     public void MarkPoseAsFollow()
     {
+        MarkRole(Role.Follow);
+    }
+
+    void MarkRole(Role role)
+    {
+        RaycastHit? hit = mover.CastRay();
         if (interactionMode != InteractionMode.PoseAlignment ||
-            currentlyTargetedCameraSetup == null) return;
-        
-        currentlyTargetedCameraSetup.MarkPoseAs(Role.Follow);
+            hit == null) return;
+
+        Dancer myDancer = hit.Value.collider.GetComponent<Polygon>().MyDancer;
+        CameraSetup myCameraSetup = myDancer.transform.parent.GetComponent<CameraSetup>();
+        myCameraSetup.CopyPoseAtFrameTo(myDancer, role, currentFrameNumber);
     }
 
     void Draw3DPose()
@@ -296,7 +303,7 @@ public class Main : MonoBehaviour
             {
                 leadPose.Add(null);
             }
-            
+
             if (sortedRays.Item2.Count > 1)
             {
                 Vector3 followJointLocus = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item2);
@@ -349,6 +356,7 @@ public class Main : MonoBehaviour
                     cameraSetup.SetCollider(true);
                     cameraSetup.SetMarkers(false);
                 }
+
                 break;
             case InteractionMode.PoseAlignment:
                 foreach (CameraSetup cameraSetup in cameras.Values)
@@ -356,6 +364,7 @@ public class Main : MonoBehaviour
                     cameraSetup.SetCollider(false);
                     cameraSetup.SetMarkers(true);
                 }
+
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -388,6 +397,27 @@ public class Main : MonoBehaviour
         if (Keyboard.current.downArrowKey.wasPressedThisFrame)
         {
             DrawPreviousSpear();
+        }
+
+        RaycastHit? hit = mover.CastRay();
+        if (hit != null)
+        {
+            Polygon hitPolygon = hit.Value.collider.GetComponent<Polygon>();
+            if (hitPolygon != null)
+            {
+                if (currentHighlightedMarker != null)
+                {
+                    currentHighlightedMarker.UnHighlight();
+                }
+
+                currentHighlightedMarker = hitPolygon;
+                currentHighlightedMarker.Highlight();
+            }
+        }
+        else if (currentHighlightedMarker != null)
+        {
+            currentHighlightedMarker.UnHighlight();
+            currentHighlightedMarker = null;
         }
     }
 

@@ -18,9 +18,28 @@ public class Raycast : MonoBehaviour
         // Don't raycast to the floor if we don't allow the user full use of raycasting.
         RayPlaneIntersection(new Ray(transform.position, transform.forward), floorPlane);
     
+    public RaycastHit? CastRay()
+    {
+        if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit))
+        {
+            return hit;
+        }
+
+        return null;
+    }
 
     static Vector3? RayPlaneIntersection(Ray ray, Plane plane)
     {
+        if (!plane.Raycast(ray, out float distanceAlongRay)) return null;
+
+        Vector3 collisionPoint = ray.GetPoint(distanceAlongRay);
+        
+        return collisionPoint;
+    }
+    
+    public Vector3? PlaneIntersection(Plane plane)
+    {
+        Ray ray = new Ray(transform.position, transform.forward);
         if (!plane.Raycast(ray, out float distanceAlongRay)) return null;
 
         Vector3 collisionPoint = ray.GetPoint(distanceAlongRay);

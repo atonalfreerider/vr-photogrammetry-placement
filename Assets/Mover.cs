@@ -1,6 +1,7 @@
-﻿#nullable enable
+#nullable enable
 using System.Collections.Generic;
 using System.Linq;
+using Shapes;
 using UnityEngine;
 using VRTKLite.Controllers;
 
@@ -28,30 +29,33 @@ public class Mover : MonoBehaviour
         raycast.transform.SetParent(transform, false);
     }
 
-    readonly Dictionary<string, Collider> current = new();
+    readonly Dictionary<int, Collider> current = new();
     Collider? child;
 
     bool isDraggingFloor = false;
     Vector3 hitPointOrigin = Vector3.zero;
     bool isGrabbing = false;
     CameraSetup? currentPhoto;
-    BoxCollider? currentMarker;
+    Polygon? currentMarker;
+    
+    public RaycastHit? CastRay() => raycast.CastRay();
 
     void OnTriggerEnter(Collider other)
     {
-        current.TryAdd(other.name, other);
+        current.TryAdd(other.GetInstanceID(), other);
     }
 
     void OnTriggerExit(Collider other)
     {
-        if (current.ContainsKey(other.name))
+        if (current.ContainsKey(other.GetInstanceID()))
         {
-            current.Remove(other.name);
+            current.Remove(other.GetInstanceID());
         }
     }
 
     void Grab()
     {
+        RaycastHit? hit = CastRay();
         if (current.Any())
         {
             isGrabbing = true;
@@ -60,22 +64,24 @@ public class Mover : MonoBehaviour
             {
                 case BoxCollider boxCollider:
                     // photo focal pull or marker 2D move
-                    if (boxCollider.transform.parent.GetComponent<CameraSetup>())
+                    if (boxCollider.name.StartsWith("PHOTO:"))
                     {
                         currentPhoto = boxCollider.transform.parent.GetComponent<CameraSetup>();
                     }
-                    else
-                    {
-                        currentMarker = boxCollider;
-                        Dancer myDancer = currentMarker.transform.parent.GetComponent<Dancer>();
-                        
-                    }
-
                     break;
                 case SphereCollider sphereCollider:
                     // move whole camera
                     sphereCollider.transform.parent.SetParent(transform);
                     break;
+            }
+        }
+        else if (hit.HasValue)
+        {
+            isGrabbing = true;
+            child = hit.Value.collider;
+            if (child is BoxCollider boxCollider && boxCollider.GetComponent<Polygon>())
+            {
+                currentMarker = boxCollider.GetComponent<Polygon>();
             }
         }
         else
@@ -105,7 +111,16 @@ public class Mover : MonoBehaviour
 
             if (currentMarker != null)
             {
-                // TODO move marker in XY plane
+                Dancer myDancer = currentMarker.MyDancer;
+                CameraSetup myCameraSetup = myDancer.transform.parent.GetComponent<CameraSetup>();
+                Vector3? rayPlaneIntersection = raycast.PlaneIntersection(myCameraSetup.CurrentPlane);
+                if (rayPlaneIntersection.HasValue)
+                {
+                    Vector3 scale = myCameraSetup.PhotoScale;
+                    Vector3 intersection = myDancer.transform.InverseTransformPoint(rayPlaneIntersection.Value);
+                    currentMarker.transform.localPosition =
+                        new Vector3(intersection.x / scale.x, 0, intersection.z / scale.z);
+                }
             }
 
             Main.Instance.UpdateCameraLinks();
@@ -133,7 +148,6 @@ public class Mover : MonoBehaviour
                     // photo focul pull
                     currentPhoto = null;
                     currentMarker = null;
-                    Main.Instance.currentlyTargetedCameraSetup = null;
                     break;
                 case SphereCollider sphereCollider:
                     // move whole camera

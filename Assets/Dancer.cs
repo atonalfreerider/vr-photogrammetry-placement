@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Shapes;
 using Shapes.Lines;
 using UnityEngine;
@@ -46,11 +47,12 @@ public class Dancer : MonoBehaviour
         for (int j = 0; j < 17; j++)
         {
             Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
-            sphere.AddCollider();
+            sphere.AddCollider(new Vector3(3, 1000, 3)); // compensate for flat photo container
             sphere.gameObject.SetActive(false);
             sphere.transform.localScale = Vector3.one * .005f;
             sphere.transform.SetParent(transform, false);
-            sphere.name = "MARKER: " + j;
+            sphere.name = ((Joints)j).ToString();
+            sphere.MyDancer = this;
             poseMarkers.Add(sphere);
         }
 
@@ -83,6 +85,13 @@ public class Dancer : MonoBehaviour
         staticLink.LinkFromTo(joints[index1].transform, joints[index2].transform);
         staticLink.SetColor(Viridis.ViridisColor(index1 / 17f));
         return staticLink;
+    }
+    
+    public List<Vector2> Get2DPose()
+    {
+        return poseMarkers.Select(poseMarker => new Vector2(
+            poseMarker.transform.localPosition.x * 640f,
+            poseMarker.transform.localPosition.z * 360f)).ToList();
     }
 
     public void SetRole(Role setRole)
@@ -118,14 +127,14 @@ public class Dancer : MonoBehaviour
 
     public void SetVisible(bool show)
     {
-        foreach (Polygon followPoseMarker in poseMarkers)
+        foreach (Polygon poseMarker in poseMarkers)
         {
-            followPoseMarker.gameObject.SetActive(show);
+            poseMarker.gameObject.SetActive(show);
         }
 
-        foreach (StaticLink followLink in jointLinks)
+        foreach (StaticLink link in jointLinks)
         {
-            followLink.gameObject.SetActive(show);
+            link.gameObject.SetActive(show);
         }
     }
 
