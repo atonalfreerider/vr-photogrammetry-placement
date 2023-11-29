@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Shapes;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using VRTKLite.Controllers;
+using VRTKLite.SDK;
 
 [RequireComponent(typeof(ControllerEvents))]
 public class Mover : MonoBehaviour
@@ -38,7 +40,15 @@ public class Mover : MonoBehaviour
     CameraSetup? currentPhoto;
     Polygon? currentMarker;
     
-    public RaycastHit? CastRay() => raycast.CastRay();
+    public RaycastHit? CastRay() => SDKManager.IsVr ? raycast.CastRay() : CastMouse();
+
+    static RaycastHit? CastMouse()
+    {
+        Physics.Raycast(RayFromMouseCursor(), out RaycastHit hit);
+        return hit;
+    }
+
+    static Ray RayFromMouseCursor() => SDKManager.MainCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
 
     void OnTriggerEnter(Collider other)
     {

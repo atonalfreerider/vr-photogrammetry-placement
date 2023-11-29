@@ -12,7 +12,7 @@ using UnityEngine.InputSystem;
 public class Main : MonoBehaviour
 {
     [Header("Parameters")] public string PhotoFolderPath;
-    
+
     public Mover mover;
 
     string positionsJsonPath => Path.Combine(PhotoFolderPath, "positions.json");
@@ -33,7 +33,7 @@ public class Main : MonoBehaviour
     Polygon followGroundFoot;
 
     Polygon? currentHighlightedMarker;
-    
+
     enum InteractionMode
     {
         PhotoAlignment = 0,
@@ -400,19 +400,17 @@ public class Main : MonoBehaviour
         }
 
         RaycastHit? hit = mover.CastRay();
-        if (hit != null)
+        if (hit.HasValue && hit.Value.collider != null && hit.Value.collider.GetComponent<Polygon>())
         {
             Polygon hitPolygon = hit.Value.collider.GetComponent<Polygon>();
-            if (hitPolygon != null)
-            {
-                if (currentHighlightedMarker != null)
-                {
-                    currentHighlightedMarker.UnHighlight();
-                }
 
-                currentHighlightedMarker = hitPolygon;
-                currentHighlightedMarker.Highlight();
+            if (currentHighlightedMarker != null)
+            {
+                currentHighlightedMarker.UnHighlight();
             }
+
+            currentHighlightedMarker = hitPolygon;
+            currentHighlightedMarker.Highlight();
         }
         else if (currentHighlightedMarker != null)
         {
