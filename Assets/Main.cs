@@ -81,12 +81,20 @@ public class Main : MonoBehaviour
 
             int count = 0;
             SqliteInput sqliteInput = GetComponent<SqliteInput>();
+            
             List<List<List<List<Vector2>>>> dancersByCamera = sqliteInput.ReadFrameFromDb();
+            List<SqliteInput.DbDancer> leadsByCamera = sqliteInput.ReadDancerFromAllCameras(Role.Lead); 
+            List<SqliteInput.DbDancer> followsByCamera = sqliteInput.ReadDancerFromAllCameras(Role.Follow);
+            
             List<CameraSetup> cameraSetups = new();
             foreach (DirectoryInfo dir in root.EnumerateDirectories())
             {
                 CameraSetup cameraSetup = new GameObject(dir.Name).AddComponent<CameraSetup>();
-                cameraSetup.Init(dir.FullName, dancersByCamera[count]);
+                cameraSetup.Init(
+                    dir.FullName, 
+                    dancersByCamera[count],
+                    leadsByCamera[count], 
+                    followsByCamera[count]);
                 cameras.Add(int.Parse(dir.Name), cameraSetup);
 
                 cameraSetup.transform.SetParent(transform, false);

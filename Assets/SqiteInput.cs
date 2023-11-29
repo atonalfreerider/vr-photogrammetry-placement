@@ -9,6 +9,17 @@ using UnityEngine;
 /// </summary>
 public class SqliteInput : MonoBehaviour
 {
+    public class DbDancer
+    {
+        public Role Role;
+        public readonly List<List<Vector2>> PosesByFrame = new();
+
+        public DbDancer(Role role)
+        {
+            Role = role;
+        }
+    }
+    
     [Header("Input")] public string DbPath;
 
     public static int FrameMax = -1;
@@ -88,6 +99,80 @@ public class SqliteInput : MonoBehaviour
         }
 
         return allCameras;
+    }
+    
+    public List<DbDancer> ReadDancerFromAllCameras(Role role)
+    {
+        List<DbDancer> dancersByCamera = new();
+
+        string connectionString = "URI=file:" + DbPath;
+
+        DbDancer currentLead = new DbDancer(role);
+
+        int lastCameraId = -1;
+        int lastLeadFrameId = -1;
+        List<Vector2> currentPose = new();
+
+        using IDbConnection conn = new SQLiteConnection(connectionString);
+        conn.Open();
+
+        List<string> columnNames = new List<string>
+        {
+            "id", "camera_id", "frame_id", "position_x", "position_y"
+        };
+
+        string tableName = role switch
+        {
+            Role.Lead => "lead",
+            Role.Follow => "follow",
+            _ => ""
+        };
+
+        using IDbCommand cmd = conn.CreateCommand();
+        cmd.CommandText = CommandString(columnNames, tableName);
+
+        using IDataReader reader = cmd.ExecuteReader();
+        Dictionary<string, int> indexes = ColumnIndexes(reader, columnNames);
+        while (reader.Read())
+        {
+            int frameId = reader.GetInt32(indexes["frame_id"]);
+            int cameraId = reader.GetInt32(indexes["camera_id"]);
+            
+            if(frameId > FrameMax) FrameMax = frameId;
+
+            int? x = reader.IsDBNull(indexes["position_x"]) ? null : reader.GetInt32(indexes["position_x"]);
+            int? y = reader.IsDBNull(indexes["position_y"]) ? null : -reader.GetInt32(indexes["position_y"]);
+            Vector2 point = new(
+                x ?? 0,
+                y ?? 0);
+
+            if (cameraId > lastCameraId)
+            {
+                lastCameraId = cameraId;
+                currentLead = new DbDancer(Role.Lead);
+
+                currentPose = new List<Vector2>();
+
+                dancersByCamera.Add(currentLead);
+            }
+
+
+            if (frameId != lastLeadFrameId)
+            {
+                if (currentPose.Any())
+                {
+                    currentLead.PosesByFrame.Add(currentPose);
+                }
+
+                currentPose = new List<Vector2>();
+
+                lastLeadFrameId = frameId;
+            }
+
+            currentPose.Add(point);
+        }
+
+        return dancersByCamera;
     }
 
     static string CommandString(IEnumerable<string> columnNames, string tableName)

@@ -50,7 +50,11 @@ public class CameraSetup : MonoBehaviour
         followSpear.SetColor(Color.red);
     }
 
-    public void Init(string dirPath, List<List<List<Vector2>>> posesPerFrame)
+    public void Init(
+        string dirPath, 
+        List<List<List<Vector2>>> posesPerFrame, 
+        SqliteInput.DbDancer leadPerFrame, 
+        SqliteInput.DbDancer followPerFrame)
     {
         this.dirPath = dirPath;
         dancersByFrame = posesPerFrame;
@@ -65,8 +69,11 @@ public class CameraSetup : MonoBehaviour
 
         lead = photo.gameObject.AddComponent<Dancer>();
         lead.SetRole(Role.Lead);
+        lead.posesByFrame = leadPerFrame.PosesByFrame;
+        
         follow = photo.gameObject.AddComponent<Dancer>();
         follow.SetRole(Role.Follow);
+        follow.posesByFrame = followPerFrame.PosesByFrame;
 
         if (File.Exists(Path.Combine(this.dirPath, "grounding.json")))
         {
@@ -142,6 +149,10 @@ public class CameraSetup : MonoBehaviour
             dancerAtI.Set2DPose(frame[i]);
             dancerAtI.SetPoseMarkerColliders(poseMarkerCollidersOn);
         }
+        
+        // TODO activate
+        //lead.Set2DPose(frameNumber);
+        //follow.Set2DPose(frameNumber);
     }
 
     public void DrawSpear(int jointNumber)

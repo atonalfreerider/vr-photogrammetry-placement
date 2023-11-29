@@ -37,6 +37,9 @@ public class Dancer : MonoBehaviour
     readonly List<StaticLink> jointLinks = new();
 
     Role role;
+    
+    // only set when dancer is fully defined
+    public List<List<Vector2>> posesByFrame = new(); 
 
     void Awake()
     {
@@ -151,6 +154,23 @@ public class Dancer : MonoBehaviour
         
         UpdateLinks();
     }
+    
+    /// <summary>
+    /// Only used when dancer is fully defined
+    /// </summary>
+    public void Set2DPose(int frameNumber) 
+    { 
+        List<Vector2> pose = posesByFrame[frameNumber]; 
+        for (int j = 0; j < pose.Count; j++) 
+        { 
+            Polygon sphere = poseMarkers[j] ; 
+            sphere.gameObject.SetActive(true); 
+ 
+            sphere.transform.localPosition = new Vector3(pose[j].x / 640f, 0, pose[j].y / 360f); 
+        } 
+         
+        UpdateLinks(); 
+    } 
     
     public void SetPoseMarkerColliders(bool isOn)
     {
