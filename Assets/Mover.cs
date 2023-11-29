@@ -32,7 +32,6 @@ public class Mover : MonoBehaviour
     bool isGrabbing = false;
     BoxCollider? currentPhoto;
 
-
     void OnTriggerEnter(Collider other)
     {
         if (!current.ContainsKey(other.name))

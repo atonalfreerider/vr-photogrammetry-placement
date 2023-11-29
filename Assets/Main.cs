@@ -20,12 +20,20 @@ public class Main : MonoBehaviour
     int currentSpearNumber = 0;
     public static Main Instance;
     readonly List<StaticLink> cameraLinks = new();
+    
+    InteractionMode interactionMode = InteractionMode.PoseAlignment;
 
     Dancer lead;
     Dancer follow;
 
     Polygon leadGroundFoot;
     Polygon followGroundFoot;
+
+    enum InteractionMode
+    {
+        PhotoAlignment = 0,
+        PoseAlignment = 1
+    }
     
     public class ImgMetadata
     {
@@ -145,6 +153,8 @@ public class Main : MonoBehaviour
         Draw3DPose();
         
         Debug.Log(GlobalEntropy());
+        
+        SetInteractionMode(InteractionMode.PoseAlignment);
     }
 
     public void Advance()
@@ -185,6 +195,8 @@ public class Main : MonoBehaviour
 
     public void DrawNextSpear()
     {
+        if (interactionMode != InteractionMode.PhotoAlignment) return;
+        
         currentSpearNumber++;
         if (currentSpearNumber > 17) currentSpearNumber = 17;
 
@@ -196,6 +208,8 @@ public class Main : MonoBehaviour
 
     public void DrawPreviousSpear()
     {
+        if (interactionMode != InteractionMode.PhotoAlignment) return;
+        
         currentSpearNumber--;
         if (currentSpearNumber < 0) currentSpearNumber = 0;
 
@@ -295,6 +309,30 @@ public class Main : MonoBehaviour
         }
 
         return new Tuple<List<Ray>, List<Ray>>(leftRays, rightRays);
+    }
+
+    void SetInteractionMode(InteractionMode mode)
+    {
+        interactionMode = mode;
+        switch (interactionMode)
+        {
+            case InteractionMode.PhotoAlignment:
+                foreach (CameraSetup cameraSetup in cameras.Values)
+                {
+                    cameraSetup.SetCollider(true);
+                    cameraSetup.SetMarkers(false);
+                }
+                break;
+            case InteractionMode.PoseAlignment:
+                foreach (CameraSetup cameraSetup in cameras.Values)
+                {
+                    cameraSetup.SetCollider(false);
+                    cameraSetup.SetMarkers(true);
+                }
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
     }
 
     void Update()

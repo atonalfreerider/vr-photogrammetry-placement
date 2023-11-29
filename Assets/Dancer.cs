@@ -43,6 +43,7 @@ public class Dancer : MonoBehaviour
         for (int j = 0; j < 17; j++)
         {
             Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
+            sphere.AddCollider();
             sphere.gameObject.SetActive(false);
             sphere.transform.localScale = Vector3.one * .005f;
             sphere.transform.SetParent(transform, false);
@@ -149,6 +150,14 @@ public class Dancer : MonoBehaviour
         }
         
         UpdateLinks();
+    }
+    
+    public void SetPoseMarkerColliders(bool isOn)
+    {
+        foreach (Polygon poseMarker in poseMarkers)
+        {
+            poseMarker.GetComponent<BoxCollider>().enabled = isOn;
+        }
     }
     
     public Polygon GetJoint(int jointNumber)

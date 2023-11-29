@@ -14,7 +14,7 @@ public class CameraSetup : MonoBehaviour
     List<List<List<Vector2>>> dancersByFrame = new();
     string dirPath;
 
-    List<Dancer> dancers = new();
+    readonly List<Dancer> dancers = new();
     
     Dancer lead;
     Dancer follow;
@@ -26,6 +26,8 @@ public class CameraSetup : MonoBehaviour
     StaticLink followSpear;
     readonly Dictionary<int, Polygon> cameraMarkers = new();
     readonly Dictionary<int, Polygon> worldAnchorMarkers = new();
+
+    bool poseMarkerCollidersOn = false;
 
     void Awake()
     {
@@ -138,6 +140,7 @@ public class CameraSetup : MonoBehaviour
             Dancer dancerAtI = dancers[i];
             dancerAtI.SetVisible(true);
             dancerAtI.Set2DPose(frame[i]);
+            dancerAtI.SetPoseMarkerColliders(poseMarkerCollidersOn);
         }
     }
 
@@ -206,6 +209,16 @@ public class CameraSetup : MonoBehaviour
             staticLink.SetLength(10f);
             staticLink.SetColor(Color.blue);
         }
+    }
+
+    public void SetCollider(bool isOn)
+    {
+        photo.GetComponent<BoxCollider>().enabled = isOn;
+    }
+
+    public void SetMarkers(bool isOn)
+    {
+        poseMarkerCollidersOn = isOn;
     }
 
     public float Entropy(Dictionary<int, CameraSetup> otherCameras, Dictionary<int, Polygon> worldAnchorPositions)
