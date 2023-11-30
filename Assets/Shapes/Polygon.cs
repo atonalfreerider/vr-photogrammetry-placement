@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using Pose;
 using UnityEngine;
 
 namespace Shapes
@@ -9,7 +10,7 @@ namespace Shapes
         public MeshFilter meshFilter;
         public Renderer rend;
 
-        public Dancer MyDancer;
+        public Figure myFigure;
 
         // Link Vars
         Coroutine colorAnimator;

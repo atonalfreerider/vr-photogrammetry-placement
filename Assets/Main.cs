@@ -3,44 +3,40 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using IO;
 using Newtonsoft.Json;
+using Pose;
 using Shapes;
 using Shapes.Lines;
+using UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using VRTKLite.SDK;
 
-[RequireComponent(typeof(SqliteInput))]
-[RequireComponent(typeof(SqliteOutput))]
 public class Main : MonoBehaviour
 {
     [Header("Parameters")] public string PhotoFolderPath;
 
     Mover mover;
     public SDKManager SDKManager;
+    public PoseAligner? PoseAligner;
 
     string positionsJsonPath => Path.Combine(PhotoFolderPath, "positions.json");
 
     readonly Dictionary<int, CameraSetup> cameras = new();
     readonly Dictionary<int, Polygon> worldAnchors = new();
     int currentFrameNumber = 0;
-    int currentSpearNumber = 0;
+
     public static Main Instance;
     readonly List<StaticLink> cameraLinks = new();
 
+    public List<CameraSetup> GetCameras() => cameras.Values.ToList();
+
     InteractionMode interactionMode = InteractionMode.PoseAlignment;
-
-    Dancer lead;
-    Dancer follow;
-
-    Polygon leadGroundFoot;
-    Polygon followGroundFoot;
-
-    Polygon? currentHighlightedMarker;
 
     public int GetCurrentFrameNumber() => currentFrameNumber;
 
-    enum InteractionMode
+    public enum InteractionMode
     {
         PhotoAlignment = 0,
         PoseAlignment = 1
@@ -91,26 +87,17 @@ public class Main : MonoBehaviour
             DirectoryInfo root = new DirectoryInfo(PhotoFolderPath);
 
             int count = 0;
-            SqliteInput sqliteInput = GetComponent<SqliteInput>();
-
-            List<List<List<List<Vector2>>>> dancersByCamera = sqliteInput.ReadFrameFromDb();
-            List<SqliteInput.DbDancer> leadsByCamera = sqliteInput.ReadDancerFromAllCameras(Role.Lead);
-            List<SqliteInput.DbDancer> followsByCamera = sqliteInput.ReadDancerFromAllCameras(Role.Follow);
 
             List<CameraSetup> cameraSetups = new();
             foreach (DirectoryInfo dir in root.EnumerateDirectories())
             {
                 CameraSetup cameraSetup = new GameObject(dir.Name).AddComponent<CameraSetup>();
-                cameraSetup.Init(
-                    dir.FullName,
-                    dancersByCamera[count],
-                    leadsByCamera[count],
-                    followsByCamera[count]);
+                cameraSetup.Init(dir.FullName, PoseAligner != null);
                 cameras.Add(int.Parse(dir.Name), cameraSetup);
 
                 cameraSetup.transform.SetParent(transform, false);
                 cameraSetup.transform.Translate(Vector3.back * count * .01f);
-                cameraSetup.SetFrame(0);
+                cameraSetup.SetFrame(0, true);
                 cameraSetups.Add(cameraSetup);
                 count++;
             }
@@ -164,16 +151,19 @@ public class Main : MonoBehaviour
 
         UpdateCameraLinks();
 
-        lead = new GameObject("lead").AddComponent<Dancer>();
-        follow = new GameObject("follow").AddComponent<Dancer>();
-        lead.transform.SetParent(transform, false);
-        follow.transform.SetParent(transform, false);
-
-        Draw3DPose();
-
         Debug.Log(GlobalEntropy());
 
         SetInteractionMode(InteractionMode.PoseAlignment);
+
+        if (PoseAligner != null)
+        {
+            PoseAligner.Init(cameras);
+        }
+
+        foreach (CameraSetup cameraSetup in cameras.Values)
+        {
+            cameraSetup.SetFrame(0, false);
+        }
     }
 
     void OnVrSetupChange(GameObject setup)
@@ -186,6 +176,8 @@ public class Main : MonoBehaviour
         {
             mover = setup.GetComponent<Mover>();
         }
+
+        if (PoseAligner != null) PoseAligner.mover = mover;
     }
 
     public void Advance()
@@ -198,10 +190,13 @@ public class Main : MonoBehaviour
 
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
-            cameraSetup.SetFrame(currentFrameNumber);
+            cameraSetup.SetFrame(currentFrameNumber, false);
         }
 
-        Draw3DPose();
+        if (PoseAligner != null)
+        {
+            PoseAligner.Draw3DPose(cameras);
+        }
     }
 
     public void Reverse()
@@ -210,10 +205,13 @@ public class Main : MonoBehaviour
         if (currentFrameNumber < 0) currentFrameNumber = 0;
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
-            cameraSetup.SetFrame(currentFrameNumber);
+            cameraSetup.SetFrame(currentFrameNumber, false);
         }
 
-        Draw3DPose();
+        if (PoseAligner != null)
+        {
+            PoseAligner.Draw3DPose(cameras);
+        }
     }
 
     public void UpdateCameraLinks()
@@ -222,146 +220,6 @@ public class Main : MonoBehaviour
         {
             cameraLink.UpdateLink();
         }
-    }
-
-    public void DrawNextSpear()
-    {
-        if (interactionMode != InteractionMode.PhotoAlignment) return;
-
-        currentSpearNumber++;
-        if (currentSpearNumber > Enum.GetNames(typeof(Joints)).Length)
-            currentSpearNumber = Enum.GetNames(typeof(Joints)).Length;
-
-        foreach (CameraSetup cameraSetup in cameras.Values)
-        {
-            cameraSetup.DrawSpear(currentSpearNumber);
-        }
-    }
-
-    public void DrawPreviousSpear()
-    {
-        if (interactionMode != InteractionMode.PhotoAlignment) return;
-
-        currentSpearNumber--;
-        if (currentSpearNumber < 0) currentSpearNumber = 0;
-
-        foreach (CameraSetup cameraSetup in cameras.Values)
-        {
-            cameraSetup.DrawSpear(currentSpearNumber);
-        }
-    }
-
-    public void MarkPoseAsLead()
-    {
-        MarkRole(Role.Lead);
-    }
-
-    public void MarkPoseAsFollow()
-    {
-        MarkRole(Role.Follow);
-    }
-
-    void MarkRole(Role role)
-    {
-        RaycastHit? hit = mover.CastRay();
-        if (interactionMode != InteractionMode.PoseAlignment ||
-            hit == null) return;
-
-        Dancer myDancer = hit.Value.collider.GetComponent<Polygon>().MyDancer;
-        CameraSetup myCameraSetup = myDancer.transform.parent.GetComponent<CameraSetup>();
-        myCameraSetup.CopyPoseAtFrameTo(myDancer, role, currentFrameNumber);
-    }
-
-    void Draw3DPose()
-    {
-        // blind group rays based on arbitrary 50/50 could be lead or follow
-        List<Ray>[] allRays = new List<Ray>[Enum.GetNames(typeof(Joints)).Length];
-        for (int i = 0; i < allRays.Length; i++)
-        {
-            allRays[i] = new List<Ray>();
-        }
-
-        foreach (CameraSetup cameraSetup in cameras.Values)
-        {
-            Tuple<Ray?, Ray?>[] camRays = cameraSetup.PoseRays();
-            int jointCount = 0;
-            foreach (Tuple<Ray?, Ray?> camRay in camRays)
-            {
-                if (camRay.Item1 != null)
-                {
-                    allRays[jointCount].Add(camRay.Item1.Value);
-                }
-
-                if (camRay.Item2 != null)
-                {
-                    allRays[jointCount].Add(camRay.Item2.Value);
-                }
-
-                jointCount++;
-            }
-        }
-
-        int jointCount2 = 0;
-        List<Vector3?> leadPose = new();
-        List<Vector3?> followPose = new();
-        foreach (List<Ray> jointRays in allRays)
-        {
-            // find the locus of each of these lists
-            Vector3 jointLocus = RayMidpointFinder.FindMinimumMidpoint(jointRays);
-
-            // re-sort on the basis if they are closer to one locus or another
-            Tuple<List<Ray>, List<Ray>> sortedRays = SortRays(jointRays, jointLocus);
-
-            // finally set target for re-sorted lists
-            if (sortedRays.Item1.Count > 1)
-            {
-                Vector3 leadJointLocus = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item1);
-                leadPose.Add(leadJointLocus - transform.position);
-            }
-            else
-            {
-                leadPose.Add(null);
-            }
-
-            if (sortedRays.Item2.Count > 1)
-            {
-                Vector3 followJointLocus = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item2);
-                followPose.Add(followJointLocus - transform.position);
-            }
-            else
-            {
-                followPose.Add(null);
-            }
-
-            jointCount2++;
-        }
-
-        lead.Set3DPose(leadPose);
-        follow.Set3DPose(followPose);
-    }
-
-    static Tuple<List<Ray>, List<Ray>> SortRays(List<Ray> rays, Vector3 target)
-    {
-        List<Ray> leftRays = new List<Ray>();
-        List<Ray> rightRays = new List<Ray>();
-
-        foreach (Ray ray in rays)
-        {
-            Vector3 toRay = ray.origin - target;
-            Vector3 cross = Vector3.Cross(Vector3.up, toRay);
-
-            // Determine which side of the target the ray is on
-            if (Vector3.Dot(cross, ray.direction) > 0)
-            {
-                rightRays.Add(ray);
-            }
-            else
-            {
-                leftRays.Add(ray);
-            }
-        }
-
-        return new Tuple<List<Ray>, List<Ray>>(leftRays, rightRays);
     }
 
     void SetInteractionMode(InteractionMode mode)
@@ -373,7 +231,10 @@ public class Main : MonoBehaviour
                 foreach (CameraSetup cameraSetup in cameras.Values)
                 {
                     cameraSetup.SetCollider(true);
-                    cameraSetup.SetMarkers(false);
+                    if (cameraSetup.PoseOverlay != null)
+                    {
+                        cameraSetup.PoseOverlay.SetMarkers(false);
+                    }
                 }
 
                 break;
@@ -381,7 +242,10 @@ public class Main : MonoBehaviour
                 foreach (CameraSetup cameraSetup in cameras.Values)
                 {
                     cameraSetup.SetCollider(false);
-                    cameraSetup.SetMarkers(true);
+                    if (cameraSetup.PoseOverlay != null)
+                    {
+                        cameraSetup.PoseOverlay.SetMarkers(true);
+                    }
                 }
 
                 break;
@@ -408,37 +272,6 @@ public class Main : MonoBehaviour
             Reverse();
         }
 
-        if (Keyboard.current.upArrowKey.wasPressedThisFrame)
-        {
-            DrawNextSpear();
-            MarkPoseAsLead();
-        }
-
-        if (Keyboard.current.downArrowKey.wasPressedThisFrame)
-        {
-            DrawPreviousSpear();
-            MarkPoseAsFollow();
-        }
-
-        RaycastHit? hit = mover.CastRay();
-        if (hit.HasValue && hit.Value.collider != null && hit.Value.collider.GetComponent<Polygon>())
-        {
-            Polygon hitPolygon = hit.Value.collider.GetComponent<Polygon>();
-
-            if (currentHighlightedMarker != null)
-            {
-                currentHighlightedMarker.UnHighlight();
-            }
-
-            currentHighlightedMarker = hitPolygon;
-            currentHighlightedMarker.Highlight();
-        }
-        else if (currentHighlightedMarker != null)
-        {
-            currentHighlightedMarker.UnHighlight();
-            currentHighlightedMarker = null;
-        }
-
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
             mover.Grab();
@@ -448,31 +281,45 @@ public class Main : MonoBehaviour
             mover.Release();
         }
 
-        if (Keyboard.current.f4Key.wasPressedThisFrame)
+        if (PoseAligner != null)
         {
-            SqliteOutput sqliteOutput = GetComponent<SqliteOutput>();
-
-            List<List<Vector2>?> leadPoses = new();
-            List<List<Vector2>?> followPoses = new();
-            int frameCount = 0;
-            for (int i = 0; i < cameras.Count; i++)
+            if (Keyboard.current.upArrowKey.wasPressedThisFrame)
             {
-                Tuple<Dancer, Dancer> dancers = cameras[i].GetDancers();
-
-                leadPoses.AddRange(dancers.Item1.posesByFrame);
-                followPoses.AddRange(dancers.Item2.posesByFrame);
-                if (frameCount < dancers.Item1.posesByFrame.Count)
-                {
-                    frameCount = dancers.Item1.posesByFrame.Count;
-                }
+                DrawNextSpear();
+                MarkFigure1();
             }
 
-            sqliteOutput.Serialize(Role.Lead, leadPoses, frameCount);
-            sqliteOutput.Serialize(Role.Follow, followPoses, frameCount);
-            
-            Debug.Log("Saved to " + sqliteOutput.DbPath);
+            if (Keyboard.current.downArrowKey.wasPressedThisFrame)
+            {
+                DrawPreviousSpear();
+                MarkFigure2();
+            }
         }
     }
+
+    #region PoseAligner
+
+    public void MarkFigure1()
+    {
+        PoseAligner.MarkRole(0, mover, interactionMode, currentFrameNumber);
+    }
+
+    public void MarkFigure2()
+    {
+        PoseAligner.MarkRole(1, mover, interactionMode, currentFrameNumber);
+    }
+
+    public void DrawNextSpear()
+    {
+        PoseAligner.DrawNextSpear(interactionMode, cameras);
+    }
+
+    public void DrawPreviousSpear()
+    {
+        PoseAligner.DrawPreviousSpear(interactionMode, cameras);
+    }
+
+    #endregion
 
     float GlobalEntropy()
     {

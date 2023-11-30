@@ -9,33 +9,23 @@ using UnityEngine;
 
 public class CameraSetup : MonoBehaviour
 {
+    public PoseOverlay? PoseOverlay;
     Rectangle photo;
     Polygon focalSphere;
-    List<List<List<Vector2>>> dancersByFrame = new();
     string dirPath;
-    
+
     const float PixelToMeterRatio = .001f;
     const int TextureScale = 100;
     public Main.ImgMetadata? imgMeta;
 
-    /// <summary>
-    /// N number of figures to be drawn per frame. They have no persistence.
-    /// </summary>
-    readonly List<Dancer> unknownFigures = new();
-
-    Dancer lead;
-    Dancer follow;
-
     float focal;
-    public float GetFocal => focal; 
-    
-    StaticLink leadSpear;
-    StaticLink followSpear;
+    public float GetFocal => focal;
+
     readonly Dictionary<int, Polygon> cameraMarkers = new();
     readonly Dictionary<int, Polygon> worldAnchorMarkers = new();
 
-    bool poseMarkerCollidersOn = false;
     public Plane CurrentPlane => new(photo.transform.up, photo.transform.position);
+    public GameObject GetPhotoGameObject => photo.gameObject;
 
     void Awake()
     {
@@ -46,26 +36,11 @@ public class CameraSetup : MonoBehaviour
         focalSphere.transform.localScale = Vector3.one * .01f;
         focalSphere.GetComponent<SphereCollider>().isTrigger = true;
         focalSphere.GetComponent<SphereCollider>().radius = 1f;
-
-        leadSpear = Instantiate(StaticLink.prototypeStaticLink);
-        leadSpear.gameObject.SetActive(false);
-        leadSpear.transform.SetParent(transform, false);
-        leadSpear.SetColor(Color.red);
-
-        followSpear = Instantiate(StaticLink.prototypeStaticLink);
-        followSpear.gameObject.SetActive(false);
-        followSpear.transform.SetParent(transform, false);
-        followSpear.SetColor(Color.red);
     }
 
-    public void Init(
-        string initDirPath,
-        List<List<List<Vector2>>> posesPerFrame,
-        SqliteInput.DbDancer leadPerFrame,
-        SqliteInput.DbDancer followPerFrame)
+    public void Init(string initDirPath, bool addPoseOverlay)
     {
         dirPath = initDirPath;
-        dancersByFrame = posesPerFrame;
 
         // first time
         photo = Instantiate(NewCube.textureRectPoly, transform, false);
@@ -78,22 +53,19 @@ public class CameraSetup : MonoBehaviour
 
         focalSphere.name = "SPHERE: " + dirPath;
 
-        lead = photo.gameObject.AddComponent<Dancer>();
-        lead.SetRole(Role.Lead);
-        lead.posesByFrame = leadPerFrame.PosesByFrame;
-
-        follow = photo.gameObject.AddComponent<Dancer>();
-        follow.SetRole(Role.Follow);
-        follow.posesByFrame = followPerFrame.PosesByFrame;
-
         string jsonPath = Path.Combine(dirPath, "grounding.json");
         if (File.Exists(jsonPath))
         {
             LoadGroundingFeatures(jsonPath);
         }
+
+        if (addPoseOverlay)
+        {
+            PoseOverlay = gameObject.AddComponent<PoseOverlay>();
+        }
     }
 
-    public void SetFrame(int frameNumber)
+    public void SetFrame(int frameNumber, bool isFirst)
     {
         photo.gameObject.name = frameNumber.ToString();
 
@@ -115,84 +87,10 @@ public class CameraSetup : MonoBehaviour
         photo.LoadTexture(File.ReadAllBytes(imageName));
         photo.transform.localScale = new Vector3(imgMeta.Width, 1, imgMeta.Height) * PixelToMeterRatio;
 
-        LoadPose(frameNumber);
-    }
-
-    void LoadPose(int frameNumber)
-    {
-        foreach (Dancer dancer in unknownFigures)
+        if (!isFirst && PoseOverlay != null)
         {
-            dancer.SetVisible(false);
+            PoseOverlay.LoadPose(frameNumber, imgMeta, photo.gameObject);
         }
-        
-        lead.Set2DPose(frameNumber, imgMeta);
-        follow.Set2DPose(frameNumber, imgMeta);
-
-        if (lead.HasPoseValueAt(frameNumber) && follow.HasPoseValueAt(frameNumber)) return;
-
-        lead.SetVisible(false);
-        follow.SetVisible(false);
-        
-        List<List<Vector2>> frame = dancersByFrame[frameNumber];
-        for (int i = 0; i < frame.Count; i++)
-        {
-            if (unknownFigures.Count <= i)
-            {
-                Dancer dancer = photo.gameObject.AddComponent<Dancer>();
-                dancer.SetRole(Role.Unknown);
-                unknownFigures.Add(dancer);
-            }
-
-            Dancer dancerAtI = unknownFigures[i];
-            dancerAtI.SetVisible(true);
-            dancerAtI.Set2DPose(frame[i], imgMeta);
-            dancerAtI.SetPoseMarkerColliders(poseMarkerCollidersOn);
-        }
-    }
-
-    public void DrawSpear(int jointNumber)
-    {
-        Polygon leadTarget = lead.GetJoint(jointNumber);
-        leadSpear.LinkFromTo(transform, leadTarget.transform);
-        leadSpear.UpdateLink();
-        leadSpear.SetLength(10);
-        leadSpear.gameObject.SetActive(leadTarget.gameObject.activeInHierarchy);
-
-        Polygon followTarget = follow.GetJoint(jointNumber);
-        followSpear.LinkFromTo(transform, followTarget.transform);
-        followSpear.UpdateLink();
-        followSpear.SetLength(10);
-        followSpear.gameObject.SetActive(followTarget.gameObject.activeInHierarchy);
-    }
-
-    public Tuple<Ray?, Ray?>[] PoseRays()
-    {
-        Tuple<Ray?, Ray?>[] returnList = new Tuple<Ray?, Ray?>[Enum.GetNames(typeof(Joints)).Length];
-
-        for (int i = 0; i < returnList.Length; i++)
-        {
-            Ray? ray1 = null;
-            Ray? ray2 = null;
-            Polygon leadPoseMarker = lead.GetJoint(i);
-            if (leadPoseMarker.gameObject.activeInHierarchy)
-            {
-                ray1 = new Ray(
-                    transform.position,
-                    Vector3.Normalize(leadPoseMarker.transform.position - transform.position));
-            }
-
-            Polygon followPoseMarker = follow.GetJoint(i);
-            if (followPoseMarker.gameObject.activeInHierarchy)
-            {
-                ray2 = new Ray(
-                    transform.position,
-                    Vector3.Normalize(followPoseMarker.transform.position - transform.position));
-            }
-
-            returnList[i] = new Tuple<Ray?, Ray?>(ray1, ray2);
-        }
-
-        return returnList;
     }
 
     public void MovePhotoToDistance(float d)
@@ -221,40 +119,6 @@ public class CameraSetup : MonoBehaviour
     {
         photo.GetComponent<BoxCollider>().enabled = isOn;
         focalSphere.GetComponent<SphereCollider>().enabled = isOn;
-    }
-
-    public void SetMarkers(bool isOn)
-    {
-        poseMarkerCollidersOn = isOn;
-        foreach (Dancer unknownFigure in unknownFigures)
-        {
-            unknownFigure.SetPoseMarkerColliders(poseMarkerCollidersOn);
-        }
-    }
-
-    public void CopyPoseAtFrameTo(Dancer targetedDancer, Role role, int currentFrameNumber)
-    {
-        switch (role)
-        {
-            case Role.Lead:
-                lead.posesByFrame[currentFrameNumber] = targetedDancer.Get2DPose(imgMeta);
-                lead.Set2DPose(currentFrameNumber, imgMeta);
-                lead.SetVisible(true);
-
-                break;
-            case Role.Follow:
-                follow.posesByFrame[currentFrameNumber] = targetedDancer.Get2DPose(imgMeta);
-                follow.Set2DPose(currentFrameNumber, imgMeta);
-                follow.SetVisible(true);
-
-                break;
-            case Role.Unknown:
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(role), role, null);
-        }
-        
-        targetedDancer.SetVisible(false);
     }
 
     public float Entropy(Dictionary<int, CameraSetup> otherCameras, Dictionary<int, Polygon> worldAnchorPositions)
@@ -311,11 +175,6 @@ public class CameraSetup : MonoBehaviour
                 sphere.SetColor(Color.blue);
             }
         }
-    }
-    
-    public Tuple<Dancer, Dancer> GetDancers()
-    {
-        return new Tuple<Dancer, Dancer>(lead, follow);
     }
 
     [Serializable]
