@@ -13,6 +13,10 @@ public class CameraSetup : MonoBehaviour
     Polygon focalSphere;
     List<List<List<Vector2>>> dancersByFrame = new();
     string dirPath;
+    
+    const float PixelToMeterRatio = .001f;
+    const int TextureScale = 100;
+    public Main.ImgMetadata? imgMeta;
 
     /// <summary>
     /// N number of figures to be drawn per frame. They have no persistence.
@@ -93,19 +97,23 @@ public class CameraSetup : MonoBehaviour
     {
         photo.gameObject.name = frameNumber.ToString();
 
-        Main.ImgMetadata imgMeta = null;
+        imgMeta = null;
         string imageName = Path.Combine(dirPath, $"{frameNumber:000}.jpg");
         if (File.Exists(imageName))
         {
             Texture2D texture =
-                new(100, 100, TextureFormat.RGBA32, false)
+                new(TextureScale, TextureScale, TextureFormat.RGBA32, false)
                     { filterMode = FilterMode.Point };
             texture.LoadImage(File.ReadAllBytes(imageName));
             imgMeta = new Main.ImgMetadata(5, texture.width, texture.height);
         }
+        else
+        {
+            return;
+        }
 
         photo.LoadTexture(File.ReadAllBytes(imageName));
-        photo.transform.localScale = new Vector3(imgMeta.Width, 1, imgMeta.Height) * .001f;
+        photo.transform.localScale = new Vector3(imgMeta.Width, 1, imgMeta.Height) * PixelToMeterRatio;
 
         LoadPose(frameNumber);
     }
@@ -117,11 +125,14 @@ public class CameraSetup : MonoBehaviour
             dancer.SetVisible(false);
         }
         
-        lead.Set2DPose(frameNumber);
-        follow.Set2DPose(frameNumber);
+        lead.Set2DPose(frameNumber, imgMeta);
+        follow.Set2DPose(frameNumber, imgMeta);
 
         if (lead.HasPoseValueAt(frameNumber) && follow.HasPoseValueAt(frameNumber)) return;
 
+        lead.SetVisible(false);
+        follow.SetVisible(false);
+        
         List<List<Vector2>> frame = dancersByFrame[frameNumber];
         for (int i = 0; i < frame.Count; i++)
         {
@@ -134,7 +145,7 @@ public class CameraSetup : MonoBehaviour
 
             Dancer dancerAtI = unknownFigures[i];
             dancerAtI.SetVisible(true);
-            dancerAtI.Set2DPose(frame[i]);
+            dancerAtI.Set2DPose(frame[i], imgMeta);
             dancerAtI.SetPoseMarkerColliders(poseMarkerCollidersOn);
         }
     }
@@ -226,14 +237,14 @@ public class CameraSetup : MonoBehaviour
         switch (role)
         {
             case Role.Lead:
-                lead.posesByFrame[currentFrameNumber] = targetedDancer.Get2DPose();
-                lead.Set2DPose(currentFrameNumber);
+                lead.posesByFrame[currentFrameNumber] = targetedDancer.Get2DPose(imgMeta);
+                lead.Set2DPose(currentFrameNumber, imgMeta);
                 lead.SetVisible(true);
 
                 break;
             case Role.Follow:
-                follow.posesByFrame[currentFrameNumber] = targetedDancer.Get2DPose();
-                follow.Set2DPose(currentFrameNumber);
+                follow.posesByFrame[currentFrameNumber] = targetedDancer.Get2DPose(imgMeta);
+                follow.Set2DPose(currentFrameNumber, imgMeta);
                 follow.SetVisible(true);
 
                 break;

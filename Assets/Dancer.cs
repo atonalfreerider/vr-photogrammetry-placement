@@ -89,11 +89,12 @@ public class Dancer : MonoBehaviour
         return staticLink;
     }
 
-    public List<Vector2> Get2DPose()
+    public List<Vector2> Get2DPose(Main.ImgMetadata? imgMetadata)
     {
+        if (imgMetadata == null) return new List<Vector2>();
         return poseMarkers.Select(poseMarker => new Vector2(
-            poseMarker.transform.localPosition.x * 640f,
-            poseMarker.transform.localPosition.z * 360f)).ToList();
+            poseMarker.transform.localPosition.x * imgMetadata.Width,
+            poseMarker.transform.localPosition.z * imgMetadata.Height)).ToList();
     }
 
     public void SetRole(Role setRole)
@@ -118,14 +119,21 @@ public class Dancer : MonoBehaviour
         }
     }
 
-    public void SetPositions(int currentFrame)
+    public void SetPositions(int currentFrame, Main.ImgMetadata? imgMetadata)
     {
-        List<Vector2> pose = posesByFrame[currentFrame];
+        if (imgMetadata == null) return;
+        List<Vector2>? pose = posesByFrame[currentFrame];
+        if (pose == null)
+        {
+            pose = new List<Vector2>();
+            posesByFrame[currentFrame] = pose;
+        }
+
         for (int i = 0; i < pose.Count; i++)
         {
             pose[i] = new Vector2(
-                poseMarkers[i].transform.localPosition.x, 
-                poseMarkers[i].transform.localPosition.z);
+                poseMarkers[i].transform.localPosition.x * imgMetadata.Width,
+                poseMarkers[i].transform.localPosition.z * imgMetadata.Height);
         }
 
         UpdateLinks();
@@ -166,14 +174,18 @@ public class Dancer : MonoBehaviour
         UpdateLinks();
     }
 
-    public void Set2DPose(List<Vector2> pose)
+    public void Set2DPose(List<Vector2> pose, Main.ImgMetadata? imgMetadata)
     {
+        if (imgMetadata == null) return;
         for (int j = 0; j < pose.Count; j++)
         {
             Polygon sphere = poseMarkers[j];
             sphere.gameObject.SetActive(true);
 
-            sphere.transform.localPosition = new Vector3(pose[j].x / 640f, 0, pose[j].y / 360f);
+            sphere.transform.localPosition = new Vector3(
+                pose[j].x / imgMetadata.Width,
+                0,
+                pose[j].y / imgMetadata.Height);
         }
 
         UpdateLinks();
@@ -182,18 +194,22 @@ public class Dancer : MonoBehaviour
     /// <summary>
     /// Only used when dancer is fully defined
     /// </summary>
-    public void Set2DPose(int frameNumber)
+    public void Set2DPose(int frameNumber, Main.ImgMetadata? imgMetadata)
     {
+        if (imgMetadata == null) return;
         List<Vector2>? pose = posesByFrame[frameNumber];
 
         if (pose == null) return;
-        
+
         for (int j = 0; j < pose.Count; j++)
         {
             Polygon sphere = poseMarkers[j];
             sphere.gameObject.SetActive(true);
 
-            sphere.transform.localPosition = new Vector3(pose[j].x / 640f, 0, pose[j].y / 360f);
+            sphere.transform.localPosition = new Vector3(
+                pose[j].x / imgMetadata.Width,
+                0,
+                pose[j].y / imgMetadata.Height);
         }
 
         UpdateLinks();
@@ -211,7 +227,7 @@ public class Dancer : MonoBehaviour
     {
         return poseMarkers[jointNumber];
     }
-    
+
     public bool HasPoseValueAt(int frameNumber)
     {
         return posesByFrame[frameNumber] != null;
