@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using Pose;
 using UnityEngine;
 
 namespace Shapes
@@ -9,9 +10,13 @@ namespace Shapes
         public MeshFilter meshFilter;
         public Renderer rend;
 
+        public Figure myFigure;
+
         // Link Vars
         Coroutine colorAnimator;
         static readonly int Color = Shader.PropertyToID("_Color");
+        public Color DefaultColor;
+        Color HighlightColor = UnityEngine.Color.yellow;
 
         #region DRAW Functions
 
@@ -171,11 +176,7 @@ namespace Shapes
 
         public void SetColor(Color color)
         {
-            if (colorAnimator != null)
-            {
-                StopCoroutine(colorAnimator);
-            }
-
+            DefaultColor = color;
             ChangeColorProperties(color);
         }
 
@@ -216,12 +217,23 @@ namespace Shapes
             colorAnimator = null;
         }
 
-        public void AddCollider()
+        public void AddCollider(Vector3 size)
         {
             BoxCollider collider = gameObject.AddComponent<BoxCollider>();
-            collider.size = new Vector3(transform.localScale.x * .25f, .1f, transform.localScale.z * .25f);
+            collider.size = size;
             collider.isTrigger = true;
         }
+
+        public void Highlight()
+        {
+            ChangeColorProperties(HighlightColor);
+        }
+
+        public void UnHighlight()
+        {
+            ChangeColorProperties(DefaultColor);
+        }
+        
 
         #endregion
     }

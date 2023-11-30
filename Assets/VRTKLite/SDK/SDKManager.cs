@@ -7,6 +7,9 @@ namespace VRTKLite.SDK
 {
     public class SDKManager : MonoBehaviour
     {
+        public static bool IsVr = false;
+        public static Camera MainCamera;
+        
         /// <summary>
         /// Assigned In Unity Editor and contains all Camera Rigs for each VR ecosystem.
         /// </summary>
@@ -97,6 +100,7 @@ namespace VRTKLite.SDK
                 if (sdkSetup.name == "Simulator")
                 {
                     EnableAssociatedSDKSetup(sdkSetup);
+                    MainCamera = sdkSetup.transform.GetChild(0).GetComponent<Camera>();
                     return;
                 }
             }
@@ -106,12 +110,15 @@ namespace VRTKLite.SDK
         {
             if (!IsValidXR(headsetName)) return false;
 
+            IsVr = true;
+
             // go through each setup and enable the one that matches the VR SDK from the name
             foreach (GameObject sdkSetup in Setups)
             {
                 if (sdkSetup.name == "GenericXR")
                 {
                     EnableAssociatedSDKSetup(sdkSetup);
+                    MainCamera = sdkSetup.transform.GetChild(0).GetComponent<Camera>();
                     return true;
                 }
             }

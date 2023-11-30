@@ -333,7 +333,7 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
+  near clip plane: 0.1
   far clip plane: 1000
   field of view: 60
   orthographic: 0
@@ -475,6 +475,7 @@ GameObject:
   - component: {fileID: 784952265}
   - component: {fileID: 784952266}
   - component: {fileID: 784952267}
+  - component: {fileID: 784952268}
   m_Layer: 0
   m_Name: Simulator
   m_TagString: Untagged
@@ -522,6 +523,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d04713b9c86ee7429bc1ab4a565c272, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &784952268
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 784952264}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89ae5fe296de49f18fc75a046f5c82a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1040558329
 GameObject:
   m_ObjectHideFlags: 0
@@ -534,6 +547,9 @@ GameObject:
   - component: {fileID: 1040558332}
   - component: {fileID: 1040558331}
   - component: {fileID: 1040558333}
+  - component: {fileID: 1040558336}
+  - component: {fileID: 1040558334}
+  - component: {fileID: 1040558335}
   m_Layer: 0
   m_Name: Main
   m_TagString: Untagged
@@ -582,6 +598,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   PolygonPool: {fileID: 1040558331}
   mainMat: {fileID: 2100000, guid: 09e4a2bdcbd93f44bbc7c705e4128c39, type: 2}
+  icosahedron0: {fileID: 0}
 --- !u!114 &1040558333
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -594,11 +611,48 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa0aedc006c84f319eb5e0fc0c7e81a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PhotoFolderPath: 
-  SceneLongitude: 0
-  ScneneAltitude: 0
-  SceneLatitude: 0
-  ExifToolLocation: 
+  PhotoFolderPath: C:\Users\john\Desktop\Larisa-Kadu-demo\output
+  SDKManager: {fileID: 675674842}
+  PoseAligner: {fileID: 1040558336}
+--- !u!114 &1040558334
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1040558329}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da6676f8d597de44b9566ffcc815dab0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  DbPath: C:\Users\john\Desktop\reformat.db
+--- !u!114 &1040558335
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1040558329}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4c49043e0e84bba8a1146d827b69a0e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  DbPath: C:\Users\john\Desktop\reformat.db
+--- !u!114 &1040558336
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1040558329}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c173884432794e7c8b9418d0020be54e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mover: {fileID: 0}
 --- !u!1 &1260088892
 GameObject:
   m_ObjectHideFlags: 0

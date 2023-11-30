@@ -1,37 +1,46 @@
-﻿using System;
+#nullable enable
+using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using IO;
 using Newtonsoft.Json;
+using Pose;
 using Shapes;
+using Shapes.Lines;
+using UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using Color = UnityEngine.Color;
-using Debug = UnityEngine.Debug;
-using Rectangle = Shapes.Rectangle;
-#if !UNITY_ANDROID
-using System.Drawing;
-#endif
+using VRTKLite.SDK;
 
 public class Main : MonoBehaviour
 {
-    [Header("Parameters")]
-    public string PhotoFolderPath;
-    public float DefaultFocalLength;
-    public float SceneLongitude;
-    public float ScneneAltitude;
-    public float SceneLatitude;
-    public string ExifToolLocation;
+    [Header("Parameters")] public string PhotoFolderPath;
 
-    Vector3 sceneOffset => new(SceneLongitude, ScneneAltitude, SceneLatitude);
+    Mover mover;
+    public SDKManager SDKManager;
+    public PoseAligner? PoseAligner;
 
-    string jsonPath => Path.Combine(PhotoFolderPath, "positions.json");
+    string positionsJsonPath => Path.Combine(PhotoFolderPath, "positions.json");
 
-    readonly Dictionary<string, GameObject> pics = new();
-    readonly Dictionary<string, DateTime> picsByDate = new();
+    readonly Dictionary<int, CameraSetup> cameras = new();
+    readonly Dictionary<int, Polygon> worldAnchors = new();
+    int currentFrameNumber = 0;
 
-    readonly Dictionary<string, ImgMetadata> picsToCamera = new();
+    public static Main Instance;
+    readonly List<StaticLink> cameraLinks = new();
+
+    public List<CameraSetup> GetCameras() => cameras.Values.ToList();
+
+    InteractionMode interactionMode = InteractionMode.PoseAlignment;
+
+    public int GetCurrentFrameNumber() => currentFrameNumber;
+
+    public enum InteractionMode
+    {
+        PhotoAlignment = 0,
+        PoseAlignment = 1
+    }
 
     public class ImgMetadata
     {
@@ -41,46 +50,84 @@ public class Main : MonoBehaviour
 
         public ImgMetadata(float focalLength, int width, int height)
         {
-            FocalLength = focalLength;
+            FocalLength = 3;
             Width = width;
             Height = height;
         }
     }
 
+    void Awake()
+    {
+        Instance = this;
+        SDKManager.LoadedVRSetupChanged += OnVrSetupChange;
+    }
+
     void Start()
     {
+        CameraSetup.GroundingFeatures worldAnchorVector2 =
+            JsonConvert.DeserializeObject<CameraSetup.GroundingFeatures>(File.ReadAllText(Path.Combine(PhotoFolderPath,
+                "worldAnchors.json")));
+
+        Vector2 floorCenter = new Vector2(
+            worldAnchorVector2.groundingCoordsX.First(),
+            worldAnchorVector2.groundingCoordsY.First());
+
+        Polygon origin = Instantiate(PolygonFactory.Instance.icosahedron0);
+        origin.gameObject.SetActive(true);
+        origin.transform.SetParent(transform, false);
+        origin.transform.localScale = Vector3.one * .01f;
+        origin.transform.localPosition = new Vector3(floorCenter.x, 0, floorCenter.y);
+        origin.SetColor(Color.blue);
+        origin.name = "Origin";
+
+        worldAnchors.Add(0, origin);
+
         if (!string.IsNullOrEmpty(PhotoFolderPath))
         {
             DirectoryInfo root = new DirectoryInfo(PhotoFolderPath);
 
             int count = 0;
-            foreach (FileInfo file in root.EnumerateFiles("*.png").Concat(root.EnumerateFiles("*.jpg")))
+
+            List<CameraSetup> cameraSetups = new();
+            foreach (DirectoryInfo dir in root.EnumerateDirectories())
             {
-                GameObject container = PhotoFromImage(
-                    file.FullName,
-                    file.CreationTime.ToUniversalTime(),
-                    File.ReadAllBytes(file.FullName));
-                container.transform.SetParent(transform, false);
-                container.transform.Translate(Vector3.back * count * .01f);
+                CameraSetup cameraSetup = new GameObject(dir.Name).AddComponent<CameraSetup>();
+                cameraSetup.Init(dir.FullName, PoseAligner != null);
+                cameras.Add(int.Parse(dir.Name), cameraSetup);
+
+                cameraSetup.transform.SetParent(transform, false);
+                cameraSetup.transform.Translate(Vector3.back * count * .01f);
+                cameraSetup.SetFrame(0, true);
+                cameraSetups.Add(cameraSetup);
                 count++;
+            }
+
+            GameObject cameraLinkContainer = new GameObject("CameraLinks");
+            cameraLinkContainer.transform.SetParent(transform, false);
+            foreach (CameraSetup cameraSetup in cameraSetups)
+            {
+                foreach (CameraSetup setup in cameraSetups)
+                {
+                    if (setup.name == cameraSetup.name) continue;
+
+                    StaticLink cameraLink = Instantiate(StaticLink.prototypeStaticLink);
+                    cameraLink.transform.SetParent(cameraLinkContainer.transform, false);
+                    cameraLink.LinkFromTo(cameraSetup.transform, setup.transform);
+                    cameraLink.gameObject.SetActive(true);
+                    cameraLink.SetColor(Color.magenta);
+                    cameraLinks.Add(cameraLink);
+                }
             }
         }
         else
         {
-            int count = 0;
-            foreach (Texture2D image in Resources.LoadAll<Texture2D>("Textures"))
-            {
-                GameObject container = PhotoFromImage(image.name, DateTime.Now, null, image);
-                container.transform.SetParent(transform, false);
-                container.transform.Translate(Vector3.back * count * .01f);
-                count++;
-            }
+            // TODO load from resources
         }
 
         string json;
-        if (File.Exists(jsonPath))
+        if (File.Exists(positionsJsonPath))
         {
-            json = File.ReadAllText(jsonPath);
+            json = File.ReadAllText(positionsJsonPath);
         }
         else
         {
@@ -88,168 +135,194 @@ public class Main : MonoBehaviour
             json = jsonPositions != null ? jsonPositions.text : "{}";
         }
 
-        Dictionary<string, PositionAndRotation> fromJsonPics =
-            JsonConvert.DeserializeObject<Dictionary<string, PositionAndRotation>>(json);
+        Dictionary<int, PositionAndRotation> fromJsonPics =
+            JsonConvert.DeserializeObject<Dictionary<int, PositionAndRotation>>(json);
 
-        foreach (KeyValuePair<string, PositionAndRotation> positionAndRotation in fromJsonPics)
+        foreach (KeyValuePair<int, PositionAndRotation> positionAndRotation in fromJsonPics)
         {
-            GameObject container = pics[positionAndRotation.Key];
-            container.transform.localPosition =
+            CameraSetup cameraSetup = cameras[positionAndRotation.Key];
+            cameraSetup.transform.localPosition =
                 positionAndRotation.Value.positionVector3;
-            container.transform.localRotation =
+            cameraSetup.transform.localRotation =
                 positionAndRotation.Value.rotationQuaternion;
+            cameraSetup.MovePhotoToDistance(positionAndRotation.Value.focal);
+            cameraSetup.DrawWorldSpears();
+        }
+
+        UpdateCameraLinks();
+
+        Debug.Log(GlobalEntropy());
+
+        SetInteractionMode(InteractionMode.PoseAlignment);
+
+        if (PoseAligner != null)
+        {
+            PoseAligner.Init(cameras);
+        }
+
+        foreach (CameraSetup cameraSetup in cameras.Values)
+        {
+            cameraSetup.SetFrame(0, false);
         }
     }
 
-    GameObject PhotoFromImage(string imageName, DateTime creationTime, byte[] bytes = null, Texture2D texture2D = null)
+    void OnVrSetupChange(GameObject setup)
     {
-        GameObject container = new(imageName);
-
-        Rectangle photo = Instantiate(NewCube.textureRectPoly, transform, false);
-        photo.gameObject.SetActive(true);
-        photo.gameObject.name = imageName;
-
-        ImgMetadata imgMeta = null;
-        if (!string.IsNullOrEmpty(ExifToolLocation))
+        if (setup.name == "GenericXR")
         {
-            imgMeta = GetExifImgSizeAndFocalLength(imageName);
+            mover = setup.transform.GetChild(0).GetChild(1).GetComponent<Mover>();
         }
-#if !UNITY_ANDROID
-        else if (File.Exists(imageName))
+        else if (setup.name == "Simulator")
         {
-            Bitmap bitmap = new Bitmap(imageName);
-            imgMeta = new ImgMetadata(DefaultFocalLength, bitmap.Width, bitmap.Height);
-        }
-#endif
-        else if (texture2D != null)
-        {
-            imgMeta = new ImgMetadata(DefaultFocalLength, texture2D.width * 2, texture2D.height * 2);
+            mover = setup.GetComponent<Mover>();
         }
 
-        if (bytes != null)
+        if (PoseAligner != null) PoseAligner.mover = mover;
+    }
+
+    public void Advance()
+    {
+        currentFrameNumber++;
+        if (currentFrameNumber > SqliteInput.FrameMax - 1)
         {
-            photo.LoadTexture(bytes);
+            currentFrameNumber = SqliteInput.FrameMax - 1;
         }
-        else if (texture2D != null)
+
+        foreach (CameraSetup cameraSetup in cameras.Values)
         {
-            photo.rend.material.SetTexture(Shader.PropertyToID("_MainTex"), texture2D);
-            photo.rend.material.color = new Color(1, 1, 1, .5f);
+            cameraSetup.SetFrame(currentFrameNumber, false);
         }
 
-        photo.transform.localScale = new Vector3(imgMeta.Width, 1, imgMeta.Height) * .001f;
-        photo.transform.SetParent(container.transform);
-        photo.transform.Rotate(Vector3.right, -90);
-        photo.transform.Translate(Vector3.down * imgMeta.FocalLength * .1f);
+        if (PoseAligner != null)
+        {
+            PoseAligner.Draw3DPose(cameras);
+        }
+    }
 
-        GameObject focalSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        focalSphere.transform.SetParent(container.transform, true);
-        focalSphere.transform.localScale = Vector3.one * .1f;
-        focalSphere.GetComponent<SphereCollider>().isTrigger = true;
-        focalSphere.GetComponent<SphereCollider>().radius = 3f;
+    public void Reverse()
+    {
+        currentFrameNumber--;
+        if (currentFrameNumber < 0) currentFrameNumber = 0;
+        foreach (CameraSetup cameraSetup in cameras.Values)
+        {
+            cameraSetup.SetFrame(currentFrameNumber, false);
+        }
 
-        pics.Add(imageName, container);
-        picsByDate.Add(imageName, creationTime);
+        if (PoseAligner != null)
+        {
+            PoseAligner.Draw3DPose(cameras);
+        }
+    }
 
-        picsToCamera.Add(imageName, imgMeta);
-        return container;
+    public void UpdateCameraLinks()
+    {
+        foreach (StaticLink cameraLink in cameraLinks)
+        {
+            cameraLink.UpdateLink();
+        }
+    }
+
+    void SetInteractionMode(InteractionMode mode)
+    {
+        interactionMode = mode;
+        switch (interactionMode)
+        {
+            case InteractionMode.PhotoAlignment:
+                foreach (CameraSetup cameraSetup in cameras.Values)
+                {
+                    cameraSetup.SetCollider(true);
+                    if (cameraSetup.PoseOverlay != null)
+                    {
+                        cameraSetup.PoseOverlay.SetMarkers(false);
+                    }
+                }
+
+                break;
+            case InteractionMode.PoseAlignment:
+                foreach (CameraSetup cameraSetup in cameras.Values)
+                {
+                    cameraSetup.SetCollider(false);
+                    if (cameraSetup.PoseOverlay != null)
+                    {
+                        cameraSetup.PoseOverlay.SetMarkers(true);
+                    }
+                }
+
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
     }
 
     void Update()
     {
         if (Keyboard.current.f1Key.wasPressedThisFrame)
         {
-            Serializer serializer = new Serializer(jsonPath);
-            serializer.SerializeCartesian(pics);
+            Serializer serializer = new Serializer(positionsJsonPath);
+            serializer.Serialize(cameras);
         }
 
-        if (Keyboard.current.f2Key.wasPressedThisFrame)
+        if (Keyboard.current.rightArrowKey.wasPressedThisFrame)
         {
-            // get exiftool here: https://exiftool.org/
-            // run this command
-            // perl C:\Image-ExifTool-12.54\exiftool.pl -csv="C:\Users\john\Desktop\TOWER_HOUSE\exterior\geo.csv" C:\Users\john\Desktop\TOWER_HOUSE\exterior
-            Serializer serializer = new Serializer(Path.Combine(PhotoFolderPath, "geo.csv"));
-            serializer.SerializeGeoTag(pics, sceneOffset, picsByDate);
-            //WriteGeoData();
+            Advance();
         }
 
-        if (Keyboard.current.f3Key.wasPressedThisFrame)
+        if (Keyboard.current.leftArrowKey.wasPressedThisFrame)
         {
-            NerfSerializer nerfSerializer =
-                new NerfSerializer(Path.Combine(new DirectoryInfo(PhotoFolderPath).Parent.FullName, "transforms.json"));
-            nerfSerializer.Serialize(pics, picsToCamera, new DirectoryInfo(PhotoFolderPath).Name);
+            Reverse();
+        }
+
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            mover.Grab();
+        }
+        else if (Mouse.current.leftButton.wasReleasedThisFrame)
+        {
+            mover.Release();
+        }
+
+        if (PoseAligner != null)
+        {
+            if (Keyboard.current.upArrowKey.wasPressedThisFrame)
+            {
+                DrawNextSpear();
+                MarkFigure1();
+            }
+
+            if (Keyboard.current.downArrowKey.wasPressedThisFrame)
+            {
+                DrawPreviousSpear();
+                MarkFigure2();
+            }
         }
     }
 
-    ImgMetadata GetExifImgSizeAndFocalLength(string path)
+    #region PoseAligner
+
+    public void MarkFigure1()
     {
-        string[] args =
-            { ExifToolLocation, "-s", "-ImageSize", "-FocalLength", "-focallength35efl", "-Model", path };
-        ProcessStartInfo processStartInfo = new()
-        {
-            FileName = "perl",
-            Arguments = string.Join(" ", args),
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            CreateNoWindow = true
-        };
-
-        Process process = new();
-        process.StartInfo = processStartInfo;
-        process.Start();
-
-        string output = process.StandardOutput.ReadToEnd();
-        process.WaitForExit();
-
-        string[] lines = output.Split("\r\n");
-
-        string focalString = lines[1].Replace("mm", "");
-
-        float focal = 28;
-        if (!string.IsNullOrEmpty(focalString))
-        {
-            focal = float.Parse(ValueFromExif(focalString));
-        }
-
-        string widthByHeight = ValueFromExif(lines[0]);
-        if (lines.Length > 2 && !string.IsNullOrEmpty(lines[2]))
-        {
-            string focal35 = lines[2][(lines[2].IndexOf("equivalent:", StringComparison.Ordinal) + 12)..];
-            focal35 = focal35[..focal35.IndexOf(' ')];
-            focal = float.Parse(focal35);
-        }
-
-        // string cameraModel = ValueFromExif(lines[3]);
-
-        return new ImgMetadata(
-            focal,
-            int.Parse(widthByHeight.Split('x')[0]),
-            int.Parse(widthByHeight.Split('x')[1]));
+        PoseAligner.MarkRole(0, mover, interactionMode, currentFrameNumber);
     }
 
-    static string ValueFromExif(string exifString)
+    public void MarkFigure2()
     {
-        return exifString[(exifString.IndexOf(':') + 1)..];
+        PoseAligner.MarkRole(1, mover, interactionMode, currentFrameNumber);
     }
 
-    void WriteGeoData()
+    public void DrawNextSpear()
     {
-        string[] args = { ExifToolLocation, $"-csv=\"{Path.Combine(PhotoFolderPath, "geo.csv")}\"", PhotoFolderPath };
-        ProcessStartInfo processStartInfo = new()
-        {
-            FileName = "perl",
-            Arguments = string.Join(" ", args),
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            CreateNoWindow = true
-        };
+        PoseAligner.DrawNextSpear(interactionMode, cameras);
+    }
 
-        Process process = new();
-        process.StartInfo = processStartInfo;
-        process.Start();
+    public void DrawPreviousSpear()
+    {
+        PoseAligner.DrawPreviousSpear(interactionMode, cameras);
+    }
 
-        string output = process.StandardOutput.ReadToEnd();
-        process.WaitForExit();
+    #endregion
 
-        Debug.Log(output);
+    float GlobalEntropy()
+    {
+        return cameras.Values.Sum(cameraSetup => cameraSetup.Entropy(cameras, worldAnchors));
     }
 }

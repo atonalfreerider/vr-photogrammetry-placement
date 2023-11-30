@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Shapes.Lines;
+using UnityEngine;
 
 namespace Shapes
 {
@@ -7,6 +8,7 @@ namespace Shapes
         public static PolygonFactory Instance;
         public PolygonPool PolygonPool;
         public Material mainMat;
+        public Polygon icosahedron0;
         
         void Awake()
         {
@@ -18,6 +20,15 @@ namespace Shapes
         void BuildPolygons()
         {
             NewCube.InitCube(this);
+            StaticLink.InitStaticLink(this);
+            
+            icosahedron0 = NewPoly(mainMat);
+            Polyhedra.VertsAndFaces ivaf = Polyhedra.NewIcoVertsAndFaces(1, 0);
+            Polyhedra.NewPolyhedron(icosahedron0, ivaf.verts, ivaf.faces, false);
+            icosahedron0.name = "icosahedron0";
+            icosahedron0.SetColor(Color.white);
+            icosahedron0.transform.SetParent(transform, false);
+            icosahedron0.gameObject.SetActive(false);
         }
 
         public static Polygon NewPoly(Material passMat)
