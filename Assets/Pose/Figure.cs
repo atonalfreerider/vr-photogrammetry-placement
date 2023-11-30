@@ -244,5 +244,23 @@ namespace Pose
         {
             return posesByFrame[frameNumber] != null;
         }
+
+        public void FlipPose()
+        {
+            List<Vector3> pose = poseMarkers.Select(x => x.transform.localPosition).ToList();
+
+            poseMarkers[(int)Joints.L_Shoulder].transform.localPosition = pose[(int)Joints.R_Shoulder];
+            poseMarkers[(int)Joints.R_Shoulder].transform.localPosition = pose[(int)Joints.L_Shoulder];
+            poseMarkers[(int)Joints.L_Elbow].transform.localPosition = pose[(int)Joints.R_Elbow];
+            poseMarkers[(int)Joints.R_Elbow].transform.localPosition = pose[(int)Joints.L_Elbow];
+            poseMarkers[(int)Joints.L_Wrist].transform.localPosition = pose[(int)Joints.R_Wrist];
+            poseMarkers[(int)Joints.R_Wrist].transform.localPosition = pose[(int)Joints.L_Wrist];
+            poseMarkers[(int)Joints.L_Hip].transform.localPosition = pose[(int)Joints.R_Hip];
+            poseMarkers[(int)Joints.R_Hip].transform.localPosition = pose[(int)Joints.L_Hip];
+            poseMarkers[(int)Joints.L_Knee].transform.localPosition = pose[(int)Joints.R_Knee];
+            poseMarkers[(int)Joints.R_Knee].transform.localPosition = pose[(int)Joints.L_Knee];
+            poseMarkers[(int)Joints.L_Ankle].transform.localPosition = pose[(int)Joints.R_Ankle];
+            poseMarkers[(int)Joints.R_Ankle].transform.localPosition = pose[(int)Joints.L_Ankle];
+        }
     }
 }

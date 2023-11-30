@@ -222,6 +222,11 @@ public class PoseAligner : MonoBehaviour
 
             currentHighlightedMarker = hitPolygon;
             currentHighlightedMarker.Highlight();
+
+            if (Keyboard.current.fKey.wasPressedThisFrame)
+            {
+                hitPolygon.myFigure.FlipPose();
+            }
         }
         else if (currentHighlightedMarker != null)
         {
