@@ -60,10 +60,8 @@ public class PoseAligner : MonoBehaviour
         }
     }
 
-    public void DrawNextSpear(Main.InteractionMode interactionMode, Dictionary<int, CameraSetup> cameras)
+    public void DrawNextSpear(Dictionary<int, CameraSetup> cameras)
     {
-        if (interactionMode != Main.InteractionMode.PhotoAlignment) return;
-
         currentSpearNumber++;
         if (currentSpearNumber > Enum.GetNames(typeof(Joints)).Length)
             currentSpearNumber = Enum.GetNames(typeof(Joints)).Length;
@@ -75,10 +73,8 @@ public class PoseAligner : MonoBehaviour
         }
     }
 
-    public void DrawPreviousSpear(Main.InteractionMode interactionMode, Dictionary<int, CameraSetup> cameras)
+    public void DrawPreviousSpear(Dictionary<int, CameraSetup> cameras)
     {
-        if (interactionMode != Main.InteractionMode.PhotoAlignment) return;
-
         currentSpearNumber--;
         if (currentSpearNumber < 0) currentSpearNumber = 0;
 
@@ -97,7 +93,9 @@ public class PoseAligner : MonoBehaviour
     {
         RaycastHit? hit = mover.CastRay();
         if (interactionMode != Main.InteractionMode.PoseAlignment ||
-            hit == null) return;
+            hit == null ||
+            hit.Value.collider == null ||
+            hit.Value.collider.GetComponent<Polygon>() == null) return;
 
         Figure myFigure = hit.Value.collider.GetComponent<Polygon>().myFigure;
         CameraSetup myCameraSetup = myFigure.transform.parent.GetComponent<CameraSetup>();
@@ -213,7 +211,7 @@ public class PoseAligner : MonoBehaviour
     void Update()
     {
         RaycastHit? hit = mover.CastRay();
-        if (hit.HasValue && hit.Value.collider != null && hit.Value.collider.GetComponent<Polygon>())
+        if (hit != null && hit.Value.collider != null && hit.Value.collider.GetComponent<Polygon>())
         {
             Polygon hitPolygon = hit.Value.collider.GetComponent<Polygon>();
 

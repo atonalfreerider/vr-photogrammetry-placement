@@ -32,7 +32,7 @@ public class Main : MonoBehaviour
 
     public List<CameraSetup> GetCameras() => cameras.Values.ToList();
 
-    InteractionMode interactionMode = InteractionMode.PoseAlignment;
+    InteractionMode interactionMode = InteractionMode.PhotoAlignment;
 
     public int GetCurrentFrameNumber() => currentFrameNumber;
 
@@ -153,7 +153,7 @@ public class Main : MonoBehaviour
 
         Debug.Log(GlobalEntropy());
 
-        SetInteractionMode(InteractionMode.PoseAlignment);
+        SetInteractionMode(InteractionMode.PhotoAlignment);
 
         if (PoseAligner != null)
         {
@@ -295,28 +295,42 @@ public class Main : MonoBehaviour
                 MarkFigure2();
             }
         }
+
+        if (Keyboard.current.f9Key.wasPressedThisFrame)
+        {
+            SetInteractionMode(InteractionMode.PhotoAlignment);
+        }
+        
+        if (Keyboard.current.f10Key.wasPressedThisFrame)
+        {
+            SetInteractionMode(InteractionMode.PoseAlignment);
+        }
     }
 
     #region PoseAligner
 
     public void MarkFigure1()
     {
+        if (interactionMode != InteractionMode.PoseAlignment) return;
         PoseAligner.MarkRole(0, mover, interactionMode, currentFrameNumber);
     }
 
     public void MarkFigure2()
     {
+        if (interactionMode != InteractionMode.PoseAlignment) return;
         PoseAligner.MarkRole(1, mover, interactionMode, currentFrameNumber);
     }
 
     public void DrawNextSpear()
     {
-        PoseAligner.DrawNextSpear(interactionMode, cameras);
+        if (interactionMode != InteractionMode.PhotoAlignment) return;
+        PoseAligner.DrawNextSpear(cameras);
     }
 
     public void DrawPreviousSpear()
     {
-        PoseAligner.DrawPreviousSpear(interactionMode, cameras);
+        if (interactionMode != InteractionMode.PhotoAlignment) return;
+        PoseAligner.DrawPreviousSpear(cameras);
     }
 
     #endregion
