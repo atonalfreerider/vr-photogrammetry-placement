@@ -13,33 +13,29 @@ using Util;
 [RequireComponent(typeof(SqliteOutput))]
 public class PoseAligner : MonoBehaviour
 {
-    Figure figure0;
-    Figure figure1;
-
-    Polygon figure0GroundFoot;
-    Polygon figure1GroundFoot;
+    readonly List<Figure> defined3DFigures = new();
 
     Polygon? currentHighlightedMarker;
-
     int currentSpearNumber = 0;
-
     public Mover mover;
 
     public void Init(Dictionary<int, CameraSetup> cameras)
     {
-        figure0 = new GameObject("figure0").AddComponent<Figure>(); 
-        figure1 = new GameObject("figure1").AddComponent<Figure>(); 
-        figure0.transform.SetParent(transform, false); 
-        figure1.transform.SetParent(transform, false); 
+        for (int i = 0; i < 2; i++)
+        {
+            Figure figure0 = new GameObject($"figure{i}").AddComponent<Figure>();
+            figure0.transform.SetParent(transform, false);
+            defined3DFigures.Add(figure0);
+        }
 
-        
+
         int count = 0;
         SqliteInput sqliteInput = GetComponent<SqliteInput>();
 
         List<List<List<List<Vector2>>>> figuredByCamera = sqliteInput.ReadFrameFromDb();
         List<List<SqliteInput.DbFigure>> allDefinedFiguresByCamera = new List<List<SqliteInput.DbFigure>>();
-        
-        for(int i = 0; i < 2 ; i++)
+
+        for (int i = 0; i < 2; i++)
         {
             allDefinedFiguresByCamera.Add(sqliteInput.ReadFiguresFromAllCameras(i));
         }
@@ -53,11 +49,13 @@ public class PoseAligner : MonoBehaviour
                 {
                     figuresToPass.Add(figure[count]);
                 }
+
                 cameraSetup.PoseOverlay.InitFigures(
                     cameraSetup.GetPhotoGameObject,
                     figuredByCamera[count],
                     figuresToPass);
             }
+
             count++;
         }
     }
@@ -72,7 +70,7 @@ public class PoseAligner : MonoBehaviour
 
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
-            if(cameraSetup.PoseOverlay == null) continue;
+            if (cameraSetup.PoseOverlay == null) continue;
             cameraSetup.PoseOverlay.DrawSpear(currentSpearNumber);
         }
     }
@@ -86,7 +84,7 @@ public class PoseAligner : MonoBehaviour
 
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
-            if(cameraSetup.PoseOverlay == null) continue;
+            if (cameraSetup.PoseOverlay == null) continue;
             cameraSetup.PoseOverlay.DrawSpear(currentSpearNumber);
         }
     }
@@ -103,7 +101,7 @@ public class PoseAligner : MonoBehaviour
 
         Figure myFigure = hit.Value.collider.GetComponent<Polygon>().myFigure;
         CameraSetup myCameraSetup = myFigure.transform.parent.GetComponent<CameraSetup>();
-        if(myCameraSetup.PoseOverlay == null) return;
+        if (myCameraSetup.PoseOverlay == null) return;
         myCameraSetup.PoseOverlay.CopyPoseAtFrameTo(myFigure, role, currentFrameNumber, myCameraSetup.imgMeta);
     }
 
@@ -118,7 +116,7 @@ public class PoseAligner : MonoBehaviour
 
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
-            if(cameraSetup.PoseOverlay == null) continue;
+            if (cameraSetup.PoseOverlay == null) continue;
             Tuple<Ray?, Ray?>[] camRays = cameraSetup.PoseOverlay.PoseRays();
             int jointCount = 0;
             foreach (Tuple<Ray?, Ray?> camRay in camRays)
@@ -172,8 +170,20 @@ public class PoseAligner : MonoBehaviour
             jointCount2++;
         }
 
-        figure0.Set3DPose(figure0Pose);
-        figure1.Set3DPose(figure1Pose);
+        int count = 0;
+        foreach (Figure defined3DFigure in defined3DFigures)
+        {
+            if (count == 0)
+            {
+                defined3DFigure.Set3DPose(figure0Pose);
+            }
+            else if (count == 1)
+            {
+                defined3DFigure.Set3DPose(figure1Pose);
+            }
+
+            count++;
+        }
     }
 
     static Tuple<List<Ray>, List<Ray>> SortRays(List<Ray> rays, Vector3 target)
@@ -229,7 +239,8 @@ public class PoseAligner : MonoBehaviour
             List<List<Vector2>?> figure1Poses = new();
             int frameCount = 0;
             List<CameraSetup> cameras = Main.Instance.GetCameras();
-            foreach (Tuple<Figure, Figure> figures in cameras.Select(cameraSetup => cameraSetup.PoseOverlay.GetFigures()))
+            foreach (Tuple<Figure, Figure> figures in cameras.Select(
+                         cameraSetup => cameraSetup.PoseOverlay.GetFigures()))
             {
                 figure0Poses.AddRange(figures.Item1.posesByFrame);
                 figure1Poses.AddRange(figures.Item2.posesByFrame);
