@@ -10,6 +10,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using VRTKLite.SDK;
 
+[RequireComponent(typeof(SqliteInput))]
+[RequireComponent(typeof(SqliteOutput))]
 public class Main : MonoBehaviour
 {
     [Header("Parameters")] public string PhotoFolderPath;
@@ -35,7 +37,7 @@ public class Main : MonoBehaviour
     Polygon followGroundFoot;
 
     Polygon? currentHighlightedMarker;
-    
+
     public int GetCurrentFrameNumber() => currentFrameNumber;
 
     enum InteractionMode
@@ -73,7 +75,7 @@ public class Main : MonoBehaviour
         Vector2 floorCenter = new Vector2(
             worldAnchorVector2.groundingCoordsX.First(),
             worldAnchorVector2.groundingCoordsY.First());
-        
+
         Polygon origin = Instantiate(PolygonFactory.Instance.icosahedron0);
         origin.gameObject.SetActive(true);
         origin.transform.SetParent(transform, false);
@@ -227,7 +229,8 @@ public class Main : MonoBehaviour
         if (interactionMode != InteractionMode.PhotoAlignment) return;
 
         currentSpearNumber++;
-        if (currentSpearNumber > 17) currentSpearNumber = 17;
+        if (currentSpearNumber > Enum.GetNames(typeof(Joints)).Length)
+            currentSpearNumber = Enum.GetNames(typeof(Joints)).Length;
 
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
@@ -272,7 +275,7 @@ public class Main : MonoBehaviour
     void Draw3DPose()
     {
         // blind group rays based on arbitrary 50/50 could be lead or follow
-        List<Ray>[] allRays = new List<Ray>[17];
+        List<Ray>[] allRays = new List<Ray>[Enum.GetNames(typeof(Joints)).Length];
         for (int i = 0; i < allRays.Length; i++)
         {
             allRays[i] = new List<Ray>();
@@ -443,6 +446,31 @@ public class Main : MonoBehaviour
         else if (Mouse.current.leftButton.wasReleasedThisFrame)
         {
             mover.Release();
+        }
+
+        if (Keyboard.current.f4Key.wasPressedThisFrame)
+        {
+            SqliteOutput sqliteOutput = GetComponent<SqliteOutput>();
+
+            List<List<Vector2>?> leadPoses = new();
+            List<List<Vector2>?> followPoses = new();
+            int frameCount = 0;
+            for (int i = 0; i < cameras.Count; i++)
+            {
+                Tuple<Dancer, Dancer> dancers = cameras[i].GetDancers();
+
+                leadPoses.AddRange(dancers.Item1.posesByFrame);
+                followPoses.AddRange(dancers.Item2.posesByFrame);
+                if (frameCount < dancers.Item1.posesByFrame.Count)
+                {
+                    frameCount = dancers.Item1.posesByFrame.Count;
+                }
+            }
+
+            sqliteOutput.Serialize(Role.Lead, leadPoses, frameCount);
+            sqliteOutput.Serialize(Role.Follow, followPoses, frameCount);
+            
+            Debug.Log("Saved to " + sqliteOutput.DbPath);
         }
     }
 

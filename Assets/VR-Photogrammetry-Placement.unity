@@ -548,6 +548,7 @@ GameObject:
   - component: {fileID: 1040558331}
   - component: {fileID: 1040558333}
   - component: {fileID: 1040558334}
+  - component: {fileID: 1040558335}
   m_Layer: 0
   m_Name: Main
   m_TagString: Untagged
@@ -609,8 +610,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa0aedc006c84f319eb5e0fc0c7e81a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PhotoFolderPath: C:\Users\john\Desktop\output
-  mover: {fileID: 0}
+  PhotoFolderPath: C:\Users\john\Desktop\Larisa-Kadu-demo\output
   SDKManager: {fileID: 675674842}
 --- !u!114 &1040558334
 MonoBehaviour:
@@ -622,6 +622,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: da6676f8d597de44b9566ffcc815dab0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  DbPath: C:\Users\john\Desktop\reformat.db
+--- !u!114 &1040558335
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1040558329}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4c49043e0e84bba8a1146d827b69a0e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   DbPath: C:\Users\john\Desktop\reformat.db

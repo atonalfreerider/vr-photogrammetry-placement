@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
@@ -20,7 +21,7 @@ public class SqliteInput : MonoBehaviour
             Role = role;
         }
     }
-    
+
     [Header("Input")] public string DbPath;
 
     public static int FrameMax = -1;
@@ -52,6 +53,7 @@ public class SqliteInput : MonoBehaviour
 
         using IDataReader reader = cmd.ExecuteReader();
         Dictionary<string, int> indexes = ColumnIndexes(reader, columnNames);
+        int numPoses = Enum.GetNames(typeof(Joints)).Length;
         while (reader.Read())
         {
             int frameId = reader.GetInt32(indexes["frame_id"]);
@@ -90,7 +92,7 @@ public class SqliteInput : MonoBehaviour
                 lastFrameId = frameId;
             }
 
-            if (poseCounter % 17 == 0)
+            if (poseCounter % numPoses == 0)
             {
                 dancersInFrame.Add(currentPose);
                 currentPose = new List<Vector2>();
@@ -101,7 +103,7 @@ public class SqliteInput : MonoBehaviour
 
         return allCameras;
     }
-    
+
     public List<DbDancer> ReadDancerFromAllCameras(Role role)
     {
         List<DbDancer> dancersByCamera = new();
@@ -111,7 +113,7 @@ public class SqliteInput : MonoBehaviour
         DbDancer currentDancer = new DbDancer(role);
 
         int lastCameraId = -1;
-        int lastLeadFrameId = -1;
+        int lastFrameId = -1;
         List<Vector2> currentPose = new();
 
         using IDbConnection conn = new SQLiteConnection(connectionString);
@@ -138,46 +140,49 @@ public class SqliteInput : MonoBehaviour
         {
             int frameId = reader.GetInt32(indexes["frame_id"]);
             int cameraId = reader.GetInt32(indexes["camera_id"]);
-            
-            if(frameId > FrameMax) FrameMax = frameId;
 
-            int? x = reader.IsDBNull(indexes["position_x"]) ? null : reader.GetInt32(indexes["position_x"]);
-            int? y = reader.IsDBNull(indexes["position_y"]) ? null : -reader.GetInt32(indexes["position_y"]);
-            Vector2? point = null;
-            if (x.HasValue && y.HasValue)
-            {
-                point = new Vector2(x.Value, y.Value);
-            }
+            if (frameId > FrameMax) FrameMax = frameId;
+
+            
 
             if (cameraId > lastCameraId)
             {
+                if (lastCameraId > -1)
+                {
+                    currentDancer.PosesByFrame.Add(currentPose.Any()
+                        ? currentPose
+                        : null);
+                }
+
                 lastCameraId = cameraId;
-                currentDancer = new DbDancer(Role.Lead);
+                currentDancer = new DbDancer(role);
 
                 currentPose = new List<Vector2>();
 
                 dancersByCamera.Add(currentDancer);
             }
 
-            if (frameId != lastLeadFrameId)
+            if (frameId != lastFrameId)
             {
-                if (currentPose.Any())
+                if (frameId > 0)
                 {
-                    currentDancer.PosesByFrame.Add(currentPose);
-                }
-                else
-                {
-                    currentDancer.PosesByFrame.Add(null);
+                    currentDancer.PosesByFrame.Add(currentPose.Any()
+                        ? currentPose
+                        : null);
                 }
 
                 currentPose = new List<Vector2>();
 
-                lastLeadFrameId = frameId;
+                lastFrameId = frameId;
             }
 
-            if (point.HasValue)
+            int? x = reader.IsDBNull(indexes["position_x"]) ? null : reader.GetInt32(indexes["position_x"]);
+            int? y = reader.IsDBNull(indexes["position_y"]) ? null : -reader.GetInt32(indexes["position_y"]);
+            
+            if (x.HasValue && y.HasValue)
             {
-                currentPose.Add(point.Value);
+                Vector2 point = new Vector2(x.Value, y.Value);
+                currentPose.Add(point);
             }
         }
 

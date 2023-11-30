@@ -27,8 +27,8 @@ public class CameraSetup : MonoBehaviour
     Dancer follow;
 
     float focal;
-    public float GetFocal => focal;
-
+    public float GetFocal => focal; 
+    
     StaticLink leadSpear;
     StaticLink followSpear;
     readonly Dictionary<int, Polygon> cameraMarkers = new();
@@ -167,7 +167,7 @@ public class CameraSetup : MonoBehaviour
 
     public Tuple<Ray?, Ray?>[] PoseRays()
     {
-        Tuple<Ray?, Ray?>[] returnList = new Tuple<Ray?, Ray?>[17];
+        Tuple<Ray?, Ray?>[] returnList = new Tuple<Ray?, Ray?>[Enum.GetNames(typeof(Joints)).Length];
 
         for (int i = 0; i < returnList.Length; i++)
         {
@@ -311,6 +311,11 @@ public class CameraSetup : MonoBehaviour
                 sphere.SetColor(Color.blue);
             }
         }
+    }
+    
+    public Tuple<Dancer, Dancer> GetDancers()
+    {
+        return new Tuple<Dancer, Dancer>(lead, follow);
     }
 
     [Serializable]

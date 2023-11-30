@@ -39,14 +39,14 @@ public class Dancer : MonoBehaviour
     readonly List<Polygon> poseMarkers = new();
     readonly List<StaticLink> jointLinks = new();
 
-    Role role;
+    public Role role;
 
     // only set when dancer is fully defined
     public List<List<Vector2>?> posesByFrame = new();
 
     void Awake()
     {
-        for (int j = 0; j < 17; j++)
+        for (int j = 0; j < Enum.GetNames(typeof(Joints)).Length; j++)
         {
             Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
             sphere.AddCollider(new Vector3(3, 1000, 3)); // compensate for flat photo container
@@ -85,7 +85,7 @@ public class Dancer : MonoBehaviour
         staticLink.gameObject.SetActive(true);
         staticLink.transform.SetParent(transform, false);
         staticLink.LinkFromTo(joints[index1].transform, joints[index2].transform);
-        staticLink.SetColor(Viridis.ViridisColor(index1 / 17f));
+        staticLink.SetColor(Viridis.ViridisColor((float)index1 / Enum.GetNames(typeof(Joints)).Length));
         return staticLink;
     }
 
@@ -132,8 +132,8 @@ public class Dancer : MonoBehaviour
         for (int i = 0; i < pose.Count; i++)
         {
             pose[i] = new Vector2(
-                poseMarkers[i].transform.localPosition.x * imgMetadata.Width,
-                poseMarkers[i].transform.localPosition.z * imgMetadata.Height);
+                (int)Math.Round(poseMarkers[i].transform.localPosition.x * imgMetadata.Width),
+                (int)Math.Round(poseMarkers[i].transform.localPosition.z * imgMetadata.Height));
         }
 
         UpdateLinks();
