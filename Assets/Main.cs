@@ -188,6 +188,7 @@ public class Main : MonoBehaviour
             currentFrameNumber = SqliteInput.FrameMax - 1;
         }
 
+        Debug.Log(currentFrameNumber);
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
             cameraSetup.SetFrame(currentFrameNumber, false);
@@ -203,6 +204,8 @@ public class Main : MonoBehaviour
     {
         currentFrameNumber--;
         if (currentFrameNumber < 0) currentFrameNumber = 0;
+        
+        Debug.Log(currentFrameNumber);
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
             cameraSetup.SetFrame(currentFrameNumber, false);

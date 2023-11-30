@@ -256,7 +256,9 @@ public class PoseAligner : MonoBehaviour
             sqliteOutput.Serialize(0, figure0Poses, frameCount);
             sqliteOutput.Serialize(1, figure1Poses, frameCount);
 
-            Debug.Log("Saved to " + sqliteOutput.DbPath);
+            int countNotNull = figure0Poses.Concat(figure1Poses).Count(pose => pose != null);
+
+            Debug.Log("Saved to " + sqliteOutput.DbPath + " Wrote " + countNotNull + " poses");
         }
     }
 }
