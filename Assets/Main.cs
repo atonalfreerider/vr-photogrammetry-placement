@@ -8,12 +8,14 @@ using Shapes;
 using Shapes.Lines;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using VRTKLite.SDK;
 
 public class Main : MonoBehaviour
 {
     [Header("Parameters")] public string PhotoFolderPath;
 
-    public Mover mover;
+    Mover mover;
+    public SDKManager SDKManager;
 
     string positionsJsonPath => Path.Combine(PhotoFolderPath, "positions.json");
 
@@ -57,6 +59,7 @@ public class Main : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        SDKManager.LoadedVRSetupChanged += OnVrSetupChange;
     }
 
     void Start()
@@ -168,6 +171,18 @@ public class Main : MonoBehaviour
         Debug.Log(GlobalEntropy());
 
         SetInteractionMode(InteractionMode.PoseAlignment);
+    }
+
+    void OnVrSetupChange(GameObject setup)
+    {
+        if (setup.name == "GenericXR")
+        {
+            mover = setup.transform.GetChild(0).GetChild(1).GetComponent<Mover>();
+        }
+        else if (setup.name == "Simulator")
+        {
+            mover = setup.GetComponent<Mover>();
+        }
     }
 
     public void Advance()
@@ -392,11 +407,13 @@ public class Main : MonoBehaviour
         if (Keyboard.current.upArrowKey.wasPressedThisFrame)
         {
             DrawNextSpear();
+            MarkPoseAsLead();
         }
 
         if (Keyboard.current.downArrowKey.wasPressedThisFrame)
         {
             DrawPreviousSpear();
+            MarkPoseAsFollow();
         }
 
         RaycastHit? hit = mover.CastRay();
@@ -416,6 +433,15 @@ public class Main : MonoBehaviour
         {
             currentHighlightedMarker.UnHighlight();
             currentHighlightedMarker = null;
+        }
+
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            mover.Grab();
+        }
+        else if (Mouse.current.leftButton.wasReleasedThisFrame)
+        {
+            mover.Release();
         }
     }
 

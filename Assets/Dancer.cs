@@ -116,7 +116,7 @@ public class Dancer : MonoBehaviour
         }
     }
 
-    void UpdateLinks()
+    public void UpdateLinks()
     {
         foreach (StaticLink staticLink in jointLinks)
         {

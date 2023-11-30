@@ -37,9 +37,11 @@ public class Raycast : MonoBehaviour
         return collisionPoint;
     }
     
-    public Vector3? PlaneIntersection(Plane plane)
+    public static Vector3? PlaneIntersection(Plane plane, Transform? passTrans)
     {
-        Ray ray = new Ray(transform.position, transform.forward);
+        Ray ray = passTrans != null 
+            ? new Ray(passTrans.position, passTrans.forward) 
+            : Mover.RayFromMouseCursor();
         if (!plane.Raycast(ray, out float distanceAlongRay)) return null;
 
         Vector3 collisionPoint = ray.GetPoint(distanceAlongRay);

@@ -7,28 +7,29 @@ using UnityEngine.InputSystem;
 using VRTKLite.Controllers;
 using VRTKLite.SDK;
 
-[RequireComponent(typeof(ControllerEvents))]
 public class Mover : MonoBehaviour
 {
-    ControllerEvents controllerEvents;
-    Raycast raycast;
+    Raycast? raycast;
 
     void Awake()
     {
-        controllerEvents = GetComponent<ControllerEvents>();
-        controllerEvents.TriggerPressed += Grab;
-        controllerEvents.TriggerReleased += Release;
-        controllerEvents.RightButtonPressed += Main.Instance.Advance;
-        controllerEvents.LeftButtonPressed += Main.Instance.Reverse;
-        
-        controllerEvents.UpButtonPressed += Main.Instance.DrawNextSpear;
-        controllerEvents.UpButtonPressed += Main.Instance.MarkPoseAsLead;
-        
-        controllerEvents.DownButtonPressed += Main.Instance.DrawPreviousSpear;
-        controllerEvents.DownButtonPressed += Main.Instance.MarkPoseAsFollow;
+        if (GetComponent<ControllerEvents>())
+        {
+            ControllerEvents controllerEvents = GetComponent<ControllerEvents>();
+            controllerEvents.TriggerPressed += Grab;
+            controllerEvents.TriggerReleased += Release;
+            controllerEvents.RightButtonPressed += Main.Instance.Advance;
+            controllerEvents.LeftButtonPressed += Main.Instance.Reverse;
 
-        raycast = new GameObject("raycast").AddComponent<Raycast>();
-        raycast.transform.SetParent(transform, false);
+            controllerEvents.UpButtonPressed += Main.Instance.DrawNextSpear;
+            controllerEvents.UpButtonPressed += Main.Instance.MarkPoseAsLead;
+
+            controllerEvents.DownButtonPressed += Main.Instance.DrawPreviousSpear;
+            controllerEvents.DownButtonPressed += Main.Instance.MarkPoseAsFollow;
+            
+            raycast = new GameObject("raycast").AddComponent<Raycast>();
+            raycast.transform.SetParent(transform, false);
+        }
     }
 
     readonly Dictionary<int, Collider> current = new();
@@ -40,7 +41,7 @@ public class Mover : MonoBehaviour
     CameraSetup? currentPhoto;
     Polygon? currentMarker;
     
-    public RaycastHit? CastRay() => SDKManager.IsVr ? raycast.CastRay() : CastMouse();
+    public RaycastHit? CastRay() => raycast != null ? raycast.CastRay() : CastMouse();
 
     static RaycastHit? CastMouse()
     {
@@ -48,7 +49,7 @@ public class Mover : MonoBehaviour
         return hit;
     }
 
-    static Ray RayFromMouseCursor() => SDKManager.MainCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
+    public static Ray RayFromMouseCursor() => SDKManager.MainCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
 
     void OnTriggerEnter(Collider other)
     {
@@ -63,7 +64,7 @@ public class Mover : MonoBehaviour
         }
     }
 
-    void Grab()
+    public void Grab()
     {
         RaycastHit? hit = CastRay();
         if (current.Any())
@@ -123,13 +124,16 @@ public class Mover : MonoBehaviour
             {
                 Dancer myDancer = currentMarker.MyDancer;
                 CameraSetup myCameraSetup = myDancer.transform.parent.GetComponent<CameraSetup>();
-                Vector3? rayPlaneIntersection = raycast.PlaneIntersection(myCameraSetup.CurrentPlane);
+                Vector3? rayPlaneIntersection = Raycast.PlaneIntersection(
+                    myCameraSetup.CurrentPlane,
+                    raycast != null ? raycast.transform : null);
                 if (rayPlaneIntersection.HasValue)
                 {
                     Vector3 scale = myCameraSetup.PhotoScale;
                     Vector3 intersection = myDancer.transform.InverseTransformPoint(rayPlaneIntersection.Value);
                     currentMarker.transform.localPosition =
                         new Vector3(intersection.x / scale.x, 0, intersection.z / scale.z);
+                    myDancer.UpdateLinks();
                 }
             }
 
@@ -146,7 +150,7 @@ public class Mover : MonoBehaviour
         }
     }
 
-    void Release()
+    public void Release()
     {
         if (child != null)
         {
@@ -155,7 +159,7 @@ public class Mover : MonoBehaviour
             switch (child)
             {
                 case BoxCollider boxCollider:
-                    // photo focul pull
+                    // photo focal pull
                     currentPhoto = null;
                     currentMarker = null;
                     break;

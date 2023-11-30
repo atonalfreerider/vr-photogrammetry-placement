@@ -475,6 +475,7 @@ GameObject:
   - component: {fileID: 784952265}
   - component: {fileID: 784952266}
   - component: {fileID: 784952267}
+  - component: {fileID: 784952268}
   m_Layer: 0
   m_Name: Simulator
   m_TagString: Untagged
@@ -520,6 +521,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8d04713b9c86ee7429bc1ab4a565c272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &784952268
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 784952264}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89ae5fe296de49f18fc75a046f5c82a1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &1040558329
@@ -596,8 +609,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa0aedc006c84f319eb5e0fc0c7e81a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PhotoFolderPath: C:\Users\john\Desktop\Larisa-Kadu-demo\output
-  mover: {fileID: 1774969084}
+  PhotoFolderPath: C:\Users\john\Desktop\output
+  mover: {fileID: 0}
+  SDKManager: {fileID: 675674842}
 --- !u!114 &1040558334
 MonoBehaviour:
   m_ObjectHideFlags: 0
