@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Shapes;
 using Shapes.Lines;
+using TMPro;
 using UnityEngine;
 using Util;
 
@@ -42,14 +43,15 @@ namespace Pose
 
         void Awake()
         {
-            for (int j = 0; j < Enum.GetNames(typeof(Joints)).Length; j++)
+            string[] enumNames = Enum.GetNames(typeof(Joints));
+            for (int j = 0; j < enumNames.Length; j++)
             {
                 Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
                 sphere.AddCollider(new Vector3(3, 1000, 3)); // compensate for flat photo container
                 sphere.gameObject.SetActive(false);
                 sphere.transform.localScale = Vector3.one * .005f;
                 sphere.transform.SetParent(transform, false);
-                sphere.name = ((Joints)j).ToString();
+                sphere.name = enumNames[j];
                 sphere.myFigure = this;
                 poseMarkers.Add(sphere);
             }
@@ -73,6 +75,20 @@ namespace Pose
             jointLinks.Add(LinkFromTo((int)Joints.R_Hip, (int)Joints.L_Hip, poseMarkers));
             jointLinks.Add(LinkFromTo((int)Joints.R_Shoulder, (int)Joints.R_Hip, poseMarkers));
             jointLinks.Add(LinkFromTo((int)Joints.L_Shoulder, (int)Joints.L_Hip, poseMarkers));
+        }
+
+        public void DrawNames()
+        {
+            foreach (Polygon poseMarker in poseMarkers)
+            {
+                TextBox textBox = TextBox.Create(poseMarker.name);
+                textBox.Size = 20;
+                textBox.Color = poseMarker.DefaultColor;
+                textBox.transform.SetParent(poseMarker.transform, false);
+                textBox.transform.Rotate(Vector3.right, 90);
+                textBox.transform.Translate(Vector3.right * .005f);
+                textBox.gameObject.SetActive(true);
+            }
         }
 
         StaticLink LinkFromTo(int index1, int index2, IReadOnlyList<Polygon> joints)

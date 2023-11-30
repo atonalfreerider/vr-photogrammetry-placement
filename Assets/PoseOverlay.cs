@@ -34,6 +34,7 @@ public class PoseOverlay : MonoBehaviour
             newFigure.SetRole(figureCount);
             newFigure.posesByFrame = dbFigure.PosesByFrame;
             definedFigures.Add(newFigure);
+            newFigure.DrawNames();
             figureCount++;
         }
         
