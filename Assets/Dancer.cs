@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Shapes;
@@ -26,7 +27,8 @@ public enum Joints
     R_Ankle = 16
 }
 
-public enum Role{
+public enum Role
+{
     Lead = 0,
     Follow = 1,
     Unknown = 2
@@ -38,9 +40,9 @@ public class Dancer : MonoBehaviour
     readonly List<StaticLink> jointLinks = new();
 
     Role role;
-    
+
     // only set when dancer is fully defined
-    public List<List<Vector2>> posesByFrame = new(); 
+    public List<List<Vector2>?> posesByFrame = new();
 
     void Awake()
     {
@@ -86,7 +88,7 @@ public class Dancer : MonoBehaviour
         staticLink.SetColor(Viridis.ViridisColor(index1 / 17f));
         return staticLink;
     }
-    
+
     public List<Vector2> Get2DPose()
     {
         return poseMarkers.Select(poseMarker => new Vector2(
@@ -109,14 +111,27 @@ public class Dancer : MonoBehaviour
         {
             poseMarker.SetColor(dancerColor);
         }
-        
+
         foreach (StaticLink staticLink in jointLinks)
         {
             staticLink.SetColor(dancerColor);
         }
     }
 
-    public void UpdateLinks()
+    public void SetPositions(int currentFrame)
+    {
+        List<Vector2> pose = posesByFrame[currentFrame];
+        for (int i = 0; i < pose.Count; i++)
+        {
+            pose[i] = new Vector2(
+                poseMarkers[i].transform.localPosition.x, 
+                poseMarkers[i].transform.localPosition.z);
+        }
+
+        UpdateLinks();
+    }
+
+    void UpdateLinks()
     {
         foreach (StaticLink staticLink in jointLinks)
         {
@@ -155,32 +170,35 @@ public class Dancer : MonoBehaviour
     {
         for (int j = 0; j < pose.Count; j++)
         {
-            Polygon sphere = poseMarkers[j] ;
+            Polygon sphere = poseMarkers[j];
             sphere.gameObject.SetActive(true);
 
             sphere.transform.localPosition = new Vector3(pose[j].x / 640f, 0, pose[j].y / 360f);
         }
-        
+
         UpdateLinks();
     }
-    
+
     /// <summary>
     /// Only used when dancer is fully defined
     /// </summary>
-    public void Set2DPose(int frameNumber) 
-    { 
-        List<Vector2> pose = posesByFrame[frameNumber]; 
-        for (int j = 0; j < pose.Count; j++) 
-        { 
-            Polygon sphere = poseMarkers[j] ; 
-            sphere.gameObject.SetActive(true); 
- 
-            sphere.transform.localPosition = new Vector3(pose[j].x / 640f, 0, pose[j].y / 360f); 
-        } 
-         
-        UpdateLinks(); 
-    } 
-    
+    public void Set2DPose(int frameNumber)
+    {
+        List<Vector2>? pose = posesByFrame[frameNumber];
+
+        if (pose == null) return;
+        
+        for (int j = 0; j < pose.Count; j++)
+        {
+            Polygon sphere = poseMarkers[j];
+            sphere.gameObject.SetActive(true);
+
+            sphere.transform.localPosition = new Vector3(pose[j].x / 640f, 0, pose[j].y / 360f);
+        }
+
+        UpdateLinks();
+    }
+
     public void SetPoseMarkerColliders(bool isOn)
     {
         foreach (Polygon poseMarker in poseMarkers)
@@ -188,9 +206,14 @@ public class Dancer : MonoBehaviour
             poseMarker.GetComponent<BoxCollider>().enabled = isOn;
         }
     }
-    
+
     public Polygon GetJoint(int jointNumber)
     {
         return poseMarkers[jointNumber];
+    }
+    
+    public bool HasPoseValueAt(int frameNumber)
+    {
+        return posesByFrame[frameNumber] != null;
     }
 }

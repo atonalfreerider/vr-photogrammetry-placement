@@ -133,7 +133,7 @@ public class Mover : MonoBehaviour
                     Vector3 intersection = myDancer.transform.InverseTransformPoint(rayPlaneIntersection.Value);
                     currentMarker.transform.localPosition =
                         new Vector3(intersection.x / scale.x, 0, intersection.z / scale.z);
-                    myDancer.UpdateLinks();
+                    myDancer.SetPositions(Main.Instance.GetCurrentFrameNumber());
                 }
             }
 

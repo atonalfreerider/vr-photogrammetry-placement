@@ -116,6 +116,11 @@ public class CameraSetup : MonoBehaviour
         {
             dancer.SetVisible(false);
         }
+        
+        lead.Set2DPose(frameNumber);
+        follow.Set2DPose(frameNumber);
+
+        if (lead.HasPoseValueAt(frameNumber) && follow.HasPoseValueAt(frameNumber)) return;
 
         List<List<Vector2>> frame = dancersByFrame[frameNumber];
         for (int i = 0; i < frame.Count; i++)
@@ -132,9 +137,6 @@ public class CameraSetup : MonoBehaviour
             dancerAtI.Set2DPose(frame[i]);
             dancerAtI.SetPoseMarkerColliders(poseMarkerCollidersOn);
         }
-        
-        lead.Set2DPose(frameNumber);
-        follow.Set2DPose(frameNumber);
     }
 
     public void DrawSpear(int jointNumber)

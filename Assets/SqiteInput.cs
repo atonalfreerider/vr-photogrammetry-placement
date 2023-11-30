@@ -1,3 +1,4 @@
+#nullable enable
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
@@ -12,7 +13,7 @@ public class SqliteInput : MonoBehaviour
     public class DbDancer
     {
         public Role Role;
-        public readonly List<List<Vector2>> PosesByFrame = new();
+        public readonly List<List<Vector2>?> PosesByFrame = new();
 
         public DbDancer(Role role)
         {
@@ -107,7 +108,7 @@ public class SqliteInput : MonoBehaviour
 
         string connectionString = "URI=file:" + DbPath;
 
-        DbDancer currentLead = new DbDancer(role);
+        DbDancer currentDancer = new DbDancer(role);
 
         int lastCameraId = -1;
         int lastLeadFrameId = -1;
@@ -142,26 +143,31 @@ public class SqliteInput : MonoBehaviour
 
             int? x = reader.IsDBNull(indexes["position_x"]) ? null : reader.GetInt32(indexes["position_x"]);
             int? y = reader.IsDBNull(indexes["position_y"]) ? null : -reader.GetInt32(indexes["position_y"]);
-            Vector2 point = new(
-                x ?? 0,
-                y ?? 0);
+            Vector2? point = null;
+            if (x.HasValue && y.HasValue)
+            {
+                point = new Vector2(x.Value, y.Value);
+            }
 
             if (cameraId > lastCameraId)
             {
                 lastCameraId = cameraId;
-                currentLead = new DbDancer(Role.Lead);
+                currentDancer = new DbDancer(Role.Lead);
 
                 currentPose = new List<Vector2>();
 
-                dancersByCamera.Add(currentLead);
+                dancersByCamera.Add(currentDancer);
             }
-
 
             if (frameId != lastLeadFrameId)
             {
                 if (currentPose.Any())
                 {
-                    currentLead.PosesByFrame.Add(currentPose);
+                    currentDancer.PosesByFrame.Add(currentPose);
+                }
+                else
+                {
+                    currentDancer.PosesByFrame.Add(null);
                 }
 
                 currentPose = new List<Vector2>();
@@ -169,7 +175,10 @@ public class SqliteInput : MonoBehaviour
                 lastLeadFrameId = frameId;
             }
 
-            currentPose.Add(point);
+            if (point.HasValue)
+            {
+                currentPose.Add(point.Value);
+            }
         }
 
         return dancersByCamera;

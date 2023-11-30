@@ -35,6 +35,8 @@ public class Main : MonoBehaviour
     Polygon followGroundFoot;
 
     Polygon? currentHighlightedMarker;
+    
+    public int GetCurrentFrameNumber() => currentFrameNumber;
 
     enum InteractionMode
     {
@@ -71,8 +73,7 @@ public class Main : MonoBehaviour
         Vector2 floorCenter = new Vector2(
             worldAnchorVector2.groundingCoordsX.First(),
             worldAnchorVector2.groundingCoordsY.First());
-
-
+        
         Polygon origin = Instantiate(PolygonFactory.Instance.icosahedron0);
         origin.gameObject.SetActive(true);
         origin.transform.SetParent(transform, false);
