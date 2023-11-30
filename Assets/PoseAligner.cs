@@ -37,18 +37,26 @@ public class PoseAligner : MonoBehaviour
         SqliteInput sqliteInput = GetComponent<SqliteInput>();
 
         List<List<List<List<Vector2>>>> figuredByCamera = sqliteInput.ReadFrameFromDb();
-        List<SqliteInput.DbFigure> figure0ByCamera = sqliteInput.ReadFiguresFromAllCameras(0);
-        List<SqliteInput.DbFigure> figure1ByCamera = sqliteInput.ReadFiguresFromAllCameras(1);
+        List<List<SqliteInput.DbFigure>> allDefinedFiguresByCamera = new List<List<SqliteInput.DbFigure>>();
+        
+        for(int i = 0; i < 2 ; i++)
+        {
+            allDefinedFiguresByCamera.Add(sqliteInput.ReadFiguresFromAllCameras(i));
+        }
 
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
             if (cameraSetup.PoseOverlay != null)
             {
+                List<SqliteInput.DbFigure> figuresToPass = new();
+                foreach (List<SqliteInput.DbFigure> figure in allDefinedFiguresByCamera)
+                {
+                    figuresToPass.Add(figure[count]);
+                }
                 cameraSetup.PoseOverlay.InitFigures(
                     cameraSetup.GetPhotoGameObject,
                     figuredByCamera[count],
-                    figure0ByCamera[count],
-                    figure1ByCamera[count]);
+                    figuresToPass);
             }
             count++;
         }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Pose;
 using Shapes;
 using Shapes.Lines;
@@ -13,43 +14,42 @@ public class PoseOverlay : MonoBehaviour
     /// N number of figures to be drawn per frame. They have no persistence.
     /// </summary>
     readonly List<Figure> unknownFigures = new();
+    readonly List<Figure> definedFigures = new();
 
-    Figure figure0;
-    Figure figure1;
-
-    StaticLink figure0Spear;
-    StaticLink figure1Spear;
+    readonly List<StaticLink> figureSpears = new();
 
     bool poseMarkerCollidersOn = false;
-
-    void Awake()
-    {
-        figure0Spear = Instantiate(StaticLink.prototypeStaticLink);
-        figure0Spear.gameObject.SetActive(false);
-        figure0Spear.transform.SetParent(transform, false);
-        figure0Spear.SetColor(Color.red);
-
-        figure1Spear = Instantiate(StaticLink.prototypeStaticLink);
-        figure1Spear.gameObject.SetActive(false);
-        figure1Spear.transform.SetParent(transform, false);
-        figure1Spear.SetColor(Color.red);
-    }
 
     public void InitFigures(
         GameObject photo,
         List<List<List<Vector2>>> posesPerFrame,
-        SqliteInput.DbFigure figure0PerFrame,
-        SqliteInput.DbFigure figure1PerFrame)
+        List<SqliteInput.DbFigure> figuresPerFrame)
     {
         figuresByFrame = posesPerFrame;
 
-        figure0 = photo.AddComponent<Figure>();
-        figure0.SetRole(0);
-        figure0.posesByFrame = figure0PerFrame.PosesByFrame;
-
-        figure1 = photo.AddComponent<Figure>();
-        figure1.SetRole(1);
-        figure1.posesByFrame = figure1PerFrame.PosesByFrame;
+        int figureCount = 0;
+        foreach (SqliteInput.DbFigure dbFigure in figuresPerFrame)
+        {
+            Figure newFigure = photo.AddComponent<Figure>();
+            newFigure.SetRole(figureCount);
+            newFigure.posesByFrame = dbFigure.PosesByFrame;
+            definedFigures.Add(newFigure);
+            figureCount++;
+        }
+        
+        DrawFigureSpears();
+    }
+    
+    void DrawFigureSpears()
+    {
+        for (int i = 0; i < definedFigures.Count; i++)
+        {
+            StaticLink figureSpear = Instantiate(StaticLink.prototypeStaticLink);
+            figureSpear.gameObject.SetActive(false);
+            figureSpear.transform.SetParent(transform, false);
+            figureSpear.SetColor(Color.red);
+            figureSpears.Add(figureSpear);
+        }
     }
 
     public void LoadPose(int frameNumber, Main.ImgMetadata imgMeta, GameObject photo)
@@ -59,13 +59,17 @@ public class PoseOverlay : MonoBehaviour
             figure.SetVisible(false);
         }
 
-        figure0.Set2DPose(frameNumber, imgMeta);
-        figure1.Set2DPose(frameNumber, imgMeta);
+        foreach (Figure figure in definedFigures)
+        {
+            figure.Set2DPose(frameNumber, imgMeta);
+        }
 
-        if (figure0.HasPoseValueAt(frameNumber) && figure1.HasPoseValueAt(frameNumber)) return;
+        if (definedFigures.All(x => x.HasPoseValueAt(frameNumber))) return;
 
-        figure0.SetVisible(false);
-        figure1.SetVisible(false);
+        foreach (Figure figure in definedFigures)
+        {
+            figure.SetVisible(false);
+        }
 
         List<List<Vector2>> frame = figuresByFrame[frameNumber];
         for (int i = 0; i < frame.Count; i++)
@@ -86,17 +90,17 @@ public class PoseOverlay : MonoBehaviour
 
     public void DrawSpear(int jointNumber)
     {
-        Polygon figure0Target = figure0.GetJoint(jointNumber);
-        figure0Spear.LinkFromTo(transform, figure0Target.transform);
-        figure0Spear.UpdateLink();
-        figure0Spear.SetLength(10);
-        figure0Spear.gameObject.SetActive(figure0Target.gameObject.activeInHierarchy);
-
-        Polygon figure1Target = figure1.GetJoint(jointNumber);
-        figure1Spear.LinkFromTo(transform, figure1Target.transform);
-        figure1Spear.UpdateLink();
-        figure1Spear.SetLength(10);
-        figure1Spear.gameObject.SetActive(figure1Target.gameObject.activeInHierarchy);
+        int count = 0;
+        foreach (Figure definedFigure in definedFigures)
+        {
+            Polygon figure0Target = definedFigure.GetJoint(jointNumber);
+            StaticLink figure0Spear = figureSpears[count];
+            figure0Spear.LinkFromTo(transform, figure0Target.transform);
+            figure0Spear.UpdateLink();
+            figure0Spear.SetLength(10);
+            figure0Spear.gameObject.SetActive(figure0Target.gameObject.activeInHierarchy);
+            count++;
+        }
     }
 
     public Tuple<Ray?, Ray?>[] PoseRays()
@@ -107,7 +111,7 @@ public class PoseOverlay : MonoBehaviour
         {
             Ray? ray1 = null;
             Ray? ray2 = null;
-            Polygon figure0PoseMarker = figure0.GetJoint(i);
+            Polygon figure0PoseMarker = definedFigures[0].GetJoint(i);
             if (figure0PoseMarker.gameObject.activeInHierarchy)
             {
                 ray1 = new Ray(
@@ -115,7 +119,7 @@ public class PoseOverlay : MonoBehaviour
                     Vector3.Normalize(figure0PoseMarker.transform.position - transform.position));
             }
 
-            Polygon figure1PoseMarker = figure1.GetJoint(i);
+            Polygon figure1PoseMarker = definedFigures[1].GetJoint(i);
             if (figure1PoseMarker.gameObject.activeInHierarchy)
             {
                 ray2 = new Ray(
@@ -140,31 +144,18 @@ public class PoseOverlay : MonoBehaviour
 
     public void CopyPoseAtFrameTo(Figure targetedFigure, int role, int currentFrameNumber, Main.ImgMetadata imgMeta)
     {
-        switch (role)
-        {
-            case 0:
-                figure0.posesByFrame[currentFrameNumber] = targetedFigure.Get2DPose(imgMeta);
-                figure0.Set2DPose(currentFrameNumber, imgMeta);
-                figure0.SetVisible(true);
-
-                break;
-            case 1:
-                figure1.posesByFrame[currentFrameNumber] = targetedFigure.Get2DPose(imgMeta);
-                figure1.Set2DPose(currentFrameNumber, imgMeta);
-                figure1.SetVisible(true);
-
-                break;
-            case -1:
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(role), role, null);
-        }
+        if (role < 0) return;
+        
+        Figure figure0 = definedFigures[role];
+        figure0.posesByFrame[currentFrameNumber] = targetedFigure.Get2DPose(imgMeta);
+        figure0.Set2DPose(currentFrameNumber, imgMeta);
+        figure0.SetVisible(true);
 
         targetedFigure.SetVisible(false);
     }
 
     public Tuple<Figure, Figure> GetFigures()
     {
-        return new Tuple<Figure, Figure>(figure0, figure1);
+        return new Tuple<Figure, Figure>(definedFigures[0], definedFigures[1]);
     }
 }
