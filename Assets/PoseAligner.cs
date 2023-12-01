@@ -17,7 +17,7 @@ public class PoseAligner : MonoBehaviour
 
     Polygon? currentHighlightedMarker;
     int currentSpearNumber = 0;
-    public Mover mover;
+    public Mover? mover;
 
     public void Init(Dictionary<int, CameraSetup> cameras)
     {
@@ -103,9 +103,16 @@ public class PoseAligner : MonoBehaviour
         myCameraSetup.PoseOverlay.CopyPoseAtFrameTo(myFigure, role, currentFrameNumber, myCameraSetup.imgMeta);
     }
 
-    public void Draw3DPose(Dictionary<int, CameraSetup> cameras)
+    public void Draw3DPoses(Dictionary<int, CameraSetup> cameras)
     {
-        // blind group rays based on arbitrary 50/50 could be figure0 or figure1
+        for (int i = 0; i < defined3DFigures.Count; i++)
+        {
+            Draw3DPose(cameras, i);
+        }
+    }
+
+    void Draw3DPose(Dictionary<int, CameraSetup> cameras, int figureCount)
+    {
         List<Ray>[] allRays = new List<Ray>[Enum.GetNames(typeof(Joints)).Length];
         for (int i = 0; i < allRays.Length; i++)
         {
@@ -115,102 +122,34 @@ public class PoseAligner : MonoBehaviour
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
             if (cameraSetup.PoseOverlay == null) continue;
-            Tuple<Ray?, Ray?>[] camRays = cameraSetup.PoseOverlay.PoseRays();
+            Ray?[] camRays = cameraSetup.PoseOverlay.PoseRays(figureCount);
             int jointCount = 0;
-            foreach (Tuple<Ray?, Ray?> camRay in camRays)
+            foreach (Ray? camRay in camRays)
             {
-                if (camRay.Item1 != null)
+                if (camRay != null)
                 {
-                    allRays[jointCount].Add(camRay.Item1.Value);
-                }
-
-                if (camRay.Item2 != null)
-                {
-                    allRays[jointCount].Add(camRay.Item2.Value);
+                    allRays[jointCount].Add(camRay.Value);
                 }
 
                 jointCount++;
             }
         }
 
-        int jointCount2 = 0;
         List<Vector3?> figure0Pose = new();
-        List<Vector3?> figure1Pose = new();
         foreach (List<Ray> jointRays in allRays)
         {
             // find the locus of each of these lists
             Vector3 jointLocus = RayMidpointFinder.FindMinimumMidpoint(jointRays);
 
-            // re-sort on the basis if they are closer to one locus or another
-            Tuple<List<Ray>, List<Ray>> sortedRays = SortRays(jointRays, jointLocus);
-
-            // finally set target for re-sorted lists
-            if (sortedRays.Item1.Count > 1)
-            {
-                Vector3 figure0JointLocus = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item1);
-                figure0Pose.Add(figure0JointLocus - transform.position);
-            }
-            else
-            {
-                figure0Pose.Add(null);
-            }
-
-            if (sortedRays.Item2.Count > 1)
-            {
-                Vector3 figure1JointLocus = RayMidpointFinder.FindMinimumMidpoint(sortedRays.Item2);
-                figure1Pose.Add(figure1JointLocus - transform.position);
-            }
-            else
-            {
-                figure1Pose.Add(null);
-            }
-
-            jointCount2++;
+            figure0Pose.Add(jointLocus - transform.position);
         }
 
-        int count = 0;
-        foreach (Figure defined3DFigure in defined3DFigures)
-        {
-            if (count == 0)
-            {
-                defined3DFigure.Set3DPose(figure0Pose);
-            }
-            else if (count == 1)
-            {
-                defined3DFigure.Set3DPose(figure1Pose);
-            }
-
-            count++;
-        }
-    }
-
-    static Tuple<List<Ray>, List<Ray>> SortRays(List<Ray> rays, Vector3 target)
-    {
-        List<Ray> leftRays = new List<Ray>();
-        List<Ray> rightRays = new List<Ray>();
-
-        foreach (Ray ray in rays)
-        {
-            Vector3 toRay = ray.origin - target;
-            Vector3 cross = Vector3.Cross(Vector3.up, toRay);
-
-            // Determine which side of the target the ray is on
-            if (Vector3.Dot(cross, ray.direction) > 0)
-            {
-                rightRays.Add(ray);
-            }
-            else
-            {
-                leftRays.Add(ray);
-            }
-        }
-
-        return new Tuple<List<Ray>, List<Ray>>(leftRays, rightRays);
+        defined3DFigures[figureCount].Set3DPose(figure0Pose);
     }
 
     void Update()
     {
-        RaycastHit? hit = mover.CastRay();
+        RaycastHit? hit = mover != null ? mover.CastRay() : null;
         if (hit != null && hit.Value.collider != null && hit.Value.collider.GetComponent<Polygon>())
         {
             Polygon hitPolygon = hit.Value.collider.GetComponent<Polygon>();

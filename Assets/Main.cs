@@ -196,7 +196,7 @@ public class Main : MonoBehaviour
 
         if (PoseAligner != null)
         {
-            PoseAligner.Draw3DPose(cameras);
+            PoseAligner.Draw3DPoses(cameras);
         }
     }
 
@@ -213,7 +213,7 @@ public class Main : MonoBehaviour
 
         if (PoseAligner != null)
         {
-            PoseAligner.Draw3DPose(cameras);
+            PoseAligner.Draw3DPoses(cameras);
         }
     }
 

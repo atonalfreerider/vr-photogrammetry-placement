@@ -104,15 +104,14 @@ public class PoseOverlay : MonoBehaviour
         }
     }
 
-    public Tuple<Ray?, Ray?>[] PoseRays()
+    public Ray?[] PoseRays(int figureCount)
     {
-        Tuple<Ray?, Ray?>[] returnList = new Tuple<Ray?, Ray?>[Enum.GetNames(typeof(Joints)).Length];
+        Ray?[] returnList = new Ray?[Enum.GetNames(typeof(Joints)).Length];
 
         for (int i = 0; i < returnList.Length; i++)
         {
             Ray? ray1 = null;
-            Ray? ray2 = null;
-            Polygon figure0PoseMarker = definedFigures[0].GetJoint(i);
+            Polygon figure0PoseMarker = definedFigures[figureCount].GetJoint(i);
             if (figure0PoseMarker.gameObject.activeInHierarchy)
             {
                 ray1 = new Ray(
@@ -120,15 +119,7 @@ public class PoseOverlay : MonoBehaviour
                     Vector3.Normalize(figure0PoseMarker.transform.position - transform.position));
             }
 
-            Polygon figure1PoseMarker = definedFigures[1].GetJoint(i);
-            if (figure1PoseMarker.gameObject.activeInHierarchy)
-            {
-                ray2 = new Ray(
-                    transform.position,
-                    Vector3.Normalize(figure1PoseMarker.transform.position - transform.position));
-            }
-
-            returnList[i] = new Tuple<Ray?, Ray?>(ray1, ray2);
+            returnList[i] = ray1;
         }
 
         return returnList;
