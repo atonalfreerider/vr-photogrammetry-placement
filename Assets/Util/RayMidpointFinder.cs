@@ -7,14 +7,19 @@ namespace Util
 {
     static class RayMidpointFinder
     {
-
         const float Tolerance = 0.0001f;
         const int MaxIterations = 1000;
 
         public static Vector3 FindMinimumMidpoint(List<Ray> rays)
         {
             Vector3 startPoint = AverageOrigins(rays);
-            return Optimize(startPoint, rays);
+            Vector3 optimize = Optimize(startPoint, rays);
+            if (float.IsNaN(optimize.x) || float.IsNaN(optimize.y) || float.IsNaN(optimize.z))
+            {
+                return Vector3.zero;
+            }
+
+            return optimize;
         }
 
         static Vector3 Optimize(Vector3 startPoint, List<Ray> rays)

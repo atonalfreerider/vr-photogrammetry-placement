@@ -23,9 +23,10 @@ public class PoseAligner : MonoBehaviour
     {
         for (int i = 0; i < 2; i++)
         {
-            Figure figure0 = new GameObject($"figure{i}").AddComponent<Figure>();
-            figure0.transform.SetParent(transform, false);
-            defined3DFigures.Add(figure0);
+            Figure figure3D = new GameObject($"figure3D-{i}").AddComponent<Figure>();
+            figure3D.transform.SetParent(transform, false);
+            figure3D.SetVisible(true);
+            defined3DFigures.Add(figure3D);
         }
 
 
@@ -113,38 +114,30 @@ public class PoseAligner : MonoBehaviour
 
     void Draw3DPose(Dictionary<int, CameraSetup> cameras, int figureCount)
     {
-        List<Ray>[] allRays = new List<Ray>[Enum.GetNames(typeof(Joints)).Length];
-        for (int i = 0; i < allRays.Length; i++)
+        List<Ray>[] allRaysPointingToJoints = new List<Ray>[Enum.GetNames(typeof(Joints)).Length];
+        for (int i = 0; i < allRaysPointingToJoints.Length; i++)
         {
-            allRays[i] = new List<Ray>();
+            allRaysPointingToJoints[i] = new List<Ray>();
         }
 
         foreach (CameraSetup cameraSetup in cameras.Values)
         {
             if (cameraSetup.PoseOverlay == null) continue;
-            Ray?[] camRays = cameraSetup.PoseOverlay.PoseRays(figureCount);
+            Ray?[] poseRays = cameraSetup.PoseOverlay.PoseRays(figureCount);
             int jointCount = 0;
-            foreach (Ray? camRay in camRays)
+            foreach (Ray? poseRay in poseRays)
             {
-                if (camRay != null)
+                if (poseRay != null)
                 {
-                    allRays[jointCount].Add(camRay.Value);
+                    allRaysPointingToJoints[jointCount].Add(poseRay.Value);
                 }
 
                 jointCount++;
             }
         }
 
-        List<Vector3?> figure0Pose = new();
-        foreach (List<Ray> jointRays in allRays)
-        {
-            // find the locus of each of these lists
-            Vector3 jointLocus = RayMidpointFinder.FindMinimumMidpoint(jointRays);
-
-            figure0Pose.Add(jointLocus - transform.position);
-        }
-
-        defined3DFigures[figureCount].Set3DPose(figure0Pose);
+        List<Vector3> figure3DPose = allRaysPointingToJoints.Select(RayMidpointFinder.FindMinimumMidpoint).ToList();
+        defined3DFigures[figureCount].Set3DPose(figure3DPose);
     }
 
     void Update()

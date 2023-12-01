@@ -175,14 +175,11 @@ namespace Pose
             }
         }
 
-        public void Set3DPose(List<Vector3?> pose)
+        public void Set3DPose(List<Vector3> pose)
         {
             for (int i = 0; i < poseMarkers.Count; i++)
             {
-                if (pose[i].HasValue)
-                {
-                    poseMarkers[i].transform.localPosition = pose[i].Value;
-                }
+                poseMarkers[i].transform.localPosition = pose[i];
             }
 
             UpdateLinks();
@@ -252,7 +249,7 @@ namespace Pose
             poseMarkers[(int)Joints.R_Knee].transform.localPosition = pose[(int)Joints.L_Knee];
             poseMarkers[(int)Joints.L_Ankle].transform.localPosition = pose[(int)Joints.R_Ankle];
             poseMarkers[(int)Joints.R_Ankle].transform.localPosition = pose[(int)Joints.L_Ankle];
-            
+
             Set2DPoseToCurrentMarkerPositionsAt(frameNumber);
         }
     }

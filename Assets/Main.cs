@@ -164,6 +164,11 @@ public class Main : MonoBehaviour
         {
             cameraSetup.SetFrame(0, false);
         }
+
+        if (PoseAligner != null)
+        {
+            PoseAligner.Draw3DPoses(cameras);
+        }
     }
 
     void OnVrSetupChange(GameObject setup)

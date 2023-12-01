@@ -110,16 +110,16 @@ public class PoseOverlay : MonoBehaviour
 
         for (int i = 0; i < returnList.Length; i++)
         {
-            Ray? ray1 = null;
-            Polygon figure0PoseMarker = definedFigures[figureCount].GetJoint(i);
-            if (figure0PoseMarker.gameObject.activeInHierarchy)
+            Ray? rayToJoint = null;
+            Polygon figureJoint = definedFigures[figureCount].GetJoint(i);
+            if (figureJoint.gameObject.activeInHierarchy)
             {
-                ray1 = new Ray(
+                rayToJoint = new Ray(
                     transform.position,
-                    Vector3.Normalize(figure0PoseMarker.transform.position - transform.position));
+                    Vector3.Normalize(figureJoint.transform.position - transform.position));
             }
 
-            returnList[i] = ray1;
+            returnList[i] = rayToJoint;
         }
 
         return returnList;
