@@ -133,7 +133,7 @@ namespace Pose
 
         public void SetPositions(int currentFrame, Main.ImgMetadata? imgMetadata)
         {
-            if (imgMetadata == null) return;
+            if (imgMetadata == null || currentFrame >= posesByFrame.Count) return;
             List<Vector2>? pose = posesByFrame[currentFrame];
             if (pose == null)
             {
