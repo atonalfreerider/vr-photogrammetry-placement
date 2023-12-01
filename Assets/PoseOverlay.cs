@@ -94,7 +94,7 @@ public class PoseOverlay : MonoBehaviour
         int count = 0;
         foreach (Figure definedFigure in definedFigures)
         {
-            Polygon figure0Target = definedFigure.GetJoint(jointNumber);
+            Polygon figure0Target = definedFigure.GetCurrentPoseJoint(jointNumber);
             StaticLink figure0Spear = figureSpears[count];
             figure0Spear.LinkFromTo(transform, figure0Target.transform);
             figure0Spear.UpdateLink();
@@ -111,7 +111,7 @@ public class PoseOverlay : MonoBehaviour
         for (int i = 0; i < returnList.Length; i++)
         {
             Ray? rayToJoint = null;
-            Polygon figureJoint = definedFigures[figureCount].GetJoint(i);
+            Polygon figureJoint = definedFigures[figureCount].GetCurrentPoseJoint(i);
             if (figureJoint.gameObject.activeInHierarchy)
             {
                 rayToJoint = new Ray(
@@ -123,6 +123,14 @@ public class PoseOverlay : MonoBehaviour
         }
 
         return returnList;
+    }
+    
+    public Ray RayFromJointFromFigureAtFrame(int jointNumber, int figureCount, int frameNumber)
+    {
+        Vector3 figureJoint = definedFigures[figureCount].GetJointAtFrame(jointNumber, frameNumber);
+        return new Ray(
+            transform.position,
+            Vector3.Normalize(figureJoint - transform.position));
     }
 
     public void SetMarkers(bool isOn)

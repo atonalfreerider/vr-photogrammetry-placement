@@ -129,17 +129,20 @@ namespace UI
                 if (currentMarker != null)
                 {
                     Figure myFigure = currentMarker.myFigure;
-                    CameraSetup myCameraSetup = myFigure.transform.parent.GetComponent<CameraSetup>();
-                    Vector3? rayPlaneIntersection = Raycast.PlaneIntersection(
-                        myCameraSetup.CurrentPlane,
-                        raycast != null ? raycast.transform : null);
-                    if (rayPlaneIntersection.HasValue)
+                    CameraSetup? myCameraSetup = myFigure.transform.parent.GetComponent<CameraSetup>();
+                    if (myCameraSetup != null)
                     {
-                        Vector3 scale = myCameraSetup.PhotoScale;
-                        Vector3 intersection = myFigure.transform.InverseTransformPoint(rayPlaneIntersection.Value);
-                        currentMarker.transform.localPosition =
-                            new Vector3(intersection.x / scale.x, 0, intersection.z / scale.z);
-                        myFigure.Set2DPoseToCurrentMarkerPositionsAt(Main.Instance.GetCurrentFrameNumber());
+                        Vector3? rayPlaneIntersection = Raycast.PlaneIntersection(
+                            myCameraSetup.CurrentPlane,
+                            raycast != null ? raycast.transform : null);
+                        if (rayPlaneIntersection.HasValue)
+                        {
+                            Vector3 scale = myCameraSetup.PhotoScale;
+                            Vector3 intersection = myFigure.transform.InverseTransformPoint(rayPlaneIntersection.Value);
+                            currentMarker.transform.localPosition =
+                                new Vector3(intersection.x / scale.x, 0, intersection.z / scale.z);
+                            myFigure.Set2DPoseToCurrentMarkerPositionsAt(Main.Instance.GetCurrentFrameNumber());
+                        }
                     }
                 }
 

@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Shapes;
 using Shapes.Lines;
-using TMPro;
 using UnityEngine;
 using Util;
 
@@ -223,9 +222,22 @@ namespace Pose
             }
         }
 
-        public Polygon GetJoint(int jointNumber)
+        public Polygon GetCurrentPoseJoint(int jointNumber)
         {
             return poseMarkers[jointNumber];
+        }
+
+        public Vector3 GetJointAtFrame(int joint, int frame)
+        {
+            if (frame >= posesByFrame.Count) return Vector3.zero;
+            List<Vector2>? pose = posesByFrame[frame];
+            if (pose == null) return Vector3.zero;
+            
+            // project onto photo
+            return transform.TransformPoint(new Vector3(
+                pose[joint].x / imgMetadata.Width,
+                0,
+                pose[joint].y / imgMetadata.Height));
         }
 
         public bool HasPoseValueAt(int frameNumber)

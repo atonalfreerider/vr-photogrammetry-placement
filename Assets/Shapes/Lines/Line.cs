@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Shapes.Lines
@@ -75,20 +76,49 @@ namespace Shapes.Lines
 
         public static Vector3[] BezierCurve(Vector3[] points)
         {
+            // aggregate the total distance of the set of points
             float linearD = 0;
             for (int ii = 0; ii < points.Length - 1; ii++)
             {
                 linearD += Vector3.Distance(points[ii], points[ii + 1]);
             }
 
-            int numPts = System.Convert.ToInt32(.3f * linearD / .01f);
-            Vector3[] curvePts = new Vector3[numPts + 1];
-            for (int ii = 0; ii <= numPts; ii++)
+            Vector3[] curvePts = new Vector3[points.Length + 1];
+            for (int ii = 0; ii <= points.Length; ii++)
             {
-                curvePts[ii] = BezierPt(points, ii / (float) numPts);
+                curvePts[ii] = BezierPt(points, ii / (float) points.Length);
             }
 
             return curvePts;
+        }
+        
+        public static List<Vector3> MovingAverageSmoothing(List<Vector3> inputList, int windowSize)
+        {
+            List<Vector3> smoothedPoints = new List<Vector3>();
+            int halfWindow = windowSize / 2;
+
+            for (int i = 0; i < inputList.Count; i++)
+            {
+                float sumX = 0, sumY = 0, sumZ = 0;
+                int count = 0;
+
+                for (int j = -halfWindow; j <= halfWindow; j++)
+                {
+                    int index = i + j;
+                    if (index >= 0 && index < inputList.Count)
+                    {
+                        sumX += inputList[index].x;
+                        sumY += inputList[index].y;
+                        sumZ += inputList[index].z;
+                        count++;
+                    }
+                }
+
+                Vector3 averagePoint = new Vector3(sumX / count, sumY / count, sumZ / count);
+                smoothedPoints.Add(averagePoint);
+            }
+
+            return smoothedPoints;
         }
 
         static Vector3[] LineArray(Vector3 ptA, Vector3 ptB, float LW, int n)

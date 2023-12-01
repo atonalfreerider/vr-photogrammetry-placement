@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Pose;
 using Shapes;
+using Shapes.Lines;
 using UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -104,7 +105,7 @@ public class PoseAligner : MonoBehaviour
         myCameraSetup.PoseOverlay.CopyPoseAtFrameTo(myFigure, role, currentFrameNumber);
     }
 
-    public void Draw3DPoses(Dictionary<int, CameraSetup> cameras)
+    public void Draw3DPoses(List<CameraSetup> cameras)
     {
         for (int i = 0; i < defined3DFigures.Count; i++)
         {
@@ -112,7 +113,7 @@ public class PoseAligner : MonoBehaviour
         }
     }
 
-    void Draw3DPose(Dictionary<int, CameraSetup> cameras, int figureCount)
+    void Draw3DPose(List<CameraSetup> cameras, int figureCount)
     {
         List<Ray>[] allRaysPointingToJoints = new List<Ray>[Enum.GetNames(typeof(Joints)).Length];
         for (int i = 0; i < allRaysPointingToJoints.Length; i++)
@@ -120,7 +121,7 @@ public class PoseAligner : MonoBehaviour
             allRaysPointingToJoints[i] = new List<Ray>();
         }
 
-        foreach (CameraSetup cameraSetup in cameras.Values)
+        foreach (CameraSetup cameraSetup in cameras)
         {
             if (cameraSetup.PoseOverlay == null) continue;
             Ray?[] poseRays = cameraSetup.PoseOverlay.PoseRays(figureCount);
@@ -138,6 +139,26 @@ public class PoseAligner : MonoBehaviour
 
         List<Vector3> figure3DPose = allRaysPointingToJoints.Select(RayMidpointFinder.FindMinimumMidpoint).ToList();
         defined3DFigures[figureCount].Set3DPose(figure3DPose);
+    }
+
+    static Vector3[] BezierTrackForJointForFigure(List<CameraSetup> cameras, int joint, int figureCount, int frameCount)
+    {
+        List<Vector3> points = new List<Vector3>();
+
+        for (int i = 0; i < frameCount; i++)
+        {
+            List<Ray> allRaysForFrameAtJoint = new List<Ray>();
+            foreach (CameraSetup cameraSetup in cameras)
+            {
+                if (cameraSetup.PoseOverlay == null) continue;
+                Ray ray = cameraSetup.PoseOverlay.RayFromJointFromFigureAtFrame(joint, figureCount, i);
+                allRaysForFrameAtJoint.Add(ray);
+            }
+
+            points.Add(RayMidpointFinder.FindMinimumMidpoint(allRaysForFrameAtJoint));
+        }
+
+        return Line.MovingAverageSmoothing(points, 4).ToArray();
     }
 
     void Update()
@@ -191,6 +212,40 @@ public class PoseAligner : MonoBehaviour
             int countNotNull = figure0Poses.Concat(figure1Poses).Count(pose => pose != null);
 
             Debug.Log("Saved to " + sqliteOutput.DbPath + " Wrote " + countNotNull + " poses");
+        }
+
+        if (Keyboard.current.f5Key.wasPressedThisFrame)
+        {
+            List<CameraSetup> cameras = Main.Instance.GetCameras();
+            int frameCount = 15;
+            Vector3[] footCurve = BezierTrackForJointForFigure(cameras, (int)Joints.R_Ankle, 1, frameCount);
+            DrawTrail(footCurve);
+            
+            Vector3[] kneeCurve = BezierTrackForJointForFigure(cameras, (int)Joints.R_Knee, 1, frameCount);
+            DrawTrail(kneeCurve);
+            
+            Vector3[] hipCurve = BezierTrackForJointForFigure(cameras, (int)Joints.R_Hip, 1, frameCount);
+            DrawTrail(hipCurve);
+            
+            Vector3[] shoulderCurve = BezierTrackForJointForFigure(cameras, (int)Joints.R_Shoulder, 1, frameCount);
+            DrawTrail(shoulderCurve);
+            
+            Vector3[] elbowCurve = BezierTrackForJointForFigure(cameras, (int)Joints.R_Elbow, 1, frameCount);
+            DrawTrail(elbowCurve);
+            
+            Vector3[] wristCurve = BezierTrackForJointForFigure(cameras, (int)Joints.R_Wrist, 1, frameCount);
+            DrawTrail(wristCurve);
+        }
+    }
+
+    static void DrawTrail(IEnumerable<Vector3> curve)
+    {
+        foreach (Vector3 pos in curve)
+        {
+            Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
+            sphere.gameObject.SetActive(true);
+            sphere.transform.position = pos;
+            sphere.transform.localScale = Vector3.one * .01f;
         }
     }
 }
