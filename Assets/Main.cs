@@ -167,7 +167,9 @@ public class Main : MonoBehaviour
 
         if (PoseAligner != null)
         {
-            PoseAligner.Draw3DPoses(cameras.Values.ToList());
+            //PoseAligner.Draw3DPoses(cameras.Values.ToList());
+            PoseAligner.DrawAllTrails(15);
+            PoseAligner.Draw3DPoseAtFrame(0);
         }
     }
 
@@ -201,7 +203,8 @@ public class Main : MonoBehaviour
 
         if (PoseAligner != null)
         {
-            PoseAligner.Draw3DPoses(cameras.Values.ToList());
+            //PoseAligner.Draw3DPoses(cameras.Values.ToList());
+            PoseAligner.Draw3DPoseAtFrame(currentFrameNumber);
         }
     }
 
@@ -218,7 +221,8 @@ public class Main : MonoBehaviour
 
         if (PoseAligner != null)
         {
-            PoseAligner.Draw3DPoses(cameras.Values.ToList());
+            //PoseAligner.Draw3DPoses(cameras.Values.ToList());
+            PoseAligner.Draw3DPoseAtFrame(currentFrameNumber);
         }
     }
 

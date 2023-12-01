@@ -30,6 +30,21 @@ namespace Pose
         R_Ankle = 16
     }
 
+    public enum Limbs
+    {
+        // Precomputed with Szudzik pairing to correspond with joint indices
+        R_Upper_Arm = 70,
+        L_Upper_Arm = 54,
+        R_Forearm = 108,
+        L_Forearm = 88,
+        R_Thigh = 208,
+        L_Thigh = 180,
+        R_Calf = 270,
+        L_Calf = 238,
+        Pelvis = 167,
+        Shoulders = 47
+    }
+
     public class Figure : MonoBehaviour
     {
         readonly List<Polygon> poseMarkers = new();
@@ -39,6 +54,9 @@ namespace Pose
 
         // only set when figure is fully defined
         public List<List<Vector2>?> posesByFrame = new();
+        public Dictionary<Limbs, float> LimbLengths = new();
+
+        readonly List<List<Vector3>> finalPoses = new();
 
         Main.ImgMetadata? imgMetadata => transform.parent.GetComponent<CameraSetup>().imgMeta;
 
@@ -184,6 +202,17 @@ namespace Pose
             UpdateLinks();
         }
 
+        public void Set3DPoseAt(int frameNumber)
+        {
+            if (finalPoses.Count <= frameNumber) return;
+            Set3DPose(finalPoses[frameNumber]);
+        }
+
+        public void AddFinal3DPose(List<Vector3> pose)
+        {
+            finalPoses.Add(pose);
+        }
+
         public void SetMarkersToPose(List<Vector2> pose)
         {
             if (imgMetadata == null) return;
@@ -232,7 +261,7 @@ namespace Pose
             if (frame >= posesByFrame.Count) return Vector3.zero;
             List<Vector2>? pose = posesByFrame[frame];
             if (pose == null) return Vector3.zero;
-            
+
             // project onto photo
             return transform.TransformPoint(new Vector3(
                 pose[joint].x / imgMetadata.Width,

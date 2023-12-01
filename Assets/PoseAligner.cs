@@ -113,6 +113,14 @@ public class PoseAligner : MonoBehaviour
         }
     }
 
+    public void Draw3DPoseAtFrame(int frameNumber)
+    {
+        foreach (Figure defined3DFigure in defined3DFigures)
+        {
+            defined3DFigure.Set3DPoseAt(frameNumber);
+        }
+    }
+
     void Draw3DPose(List<CameraSetup> cameras, int figureCount)
     {
         List<Ray>[] allRaysPointingToJoints = new List<Ray>[Enum.GetNames(typeof(Joints)).Length];
@@ -141,7 +149,11 @@ public class PoseAligner : MonoBehaviour
         defined3DFigures[figureCount].Set3DPose(figure3DPose);
     }
 
-    static Vector3[] BezierTrackForJointForFigure(List<CameraSetup> cameras, int joint, int figureCount, int frameCount)
+    static IEnumerable<Vector3> BezierTrackForJointForFigure(
+        List<CameraSetup> cameras, 
+        int joint,
+        int figureCount,
+        int frameCount)
     {
         List<Vector3> points = new List<Vector3>();
 
@@ -158,7 +170,7 @@ public class PoseAligner : MonoBehaviour
             points.Add(RayMidpointFinder.FindMinimumMidpoint(allRaysForFrameAtJoint));
         }
 
-        return Line.MovingAverageSmoothing(points, 4).ToArray();
+        return Line.MovingAverageSmoothing(points, 4);
     }
 
     void Update()
@@ -213,39 +225,139 @@ public class PoseAligner : MonoBehaviour
 
             Debug.Log("Saved to " + sqliteOutput.DbPath + " Wrote " + countNotNull + " poses");
         }
-
-        if (Keyboard.current.f5Key.wasPressedThisFrame)
-        {
-            List<CameraSetup> cameras = Main.Instance.GetCameras();
-            int frameCount = 15;
-            Vector3[] footCurve = BezierTrackForJointForFigure(cameras, (int)Joints.R_Ankle, 1, frameCount);
-            DrawTrail(footCurve);
-            
-            Vector3[] kneeCurve = BezierTrackForJointForFigure(cameras, (int)Joints.R_Knee, 1, frameCount);
-            DrawTrail(kneeCurve);
-            
-            Vector3[] hipCurve = BezierTrackForJointForFigure(cameras, (int)Joints.R_Hip, 1, frameCount);
-            DrawTrail(hipCurve);
-            
-            Vector3[] shoulderCurve = BezierTrackForJointForFigure(cameras, (int)Joints.R_Shoulder, 1, frameCount);
-            DrawTrail(shoulderCurve);
-            
-            Vector3[] elbowCurve = BezierTrackForJointForFigure(cameras, (int)Joints.R_Elbow, 1, frameCount);
-            DrawTrail(elbowCurve);
-            
-            Vector3[] wristCurve = BezierTrackForJointForFigure(cameras, (int)Joints.R_Wrist, 1, frameCount);
-            DrawTrail(wristCurve);
-        }
     }
 
-    static void DrawTrail(IEnumerable<Vector3> curve)
+    public void DrawAllTrails(int frameCount)
     {
-        foreach (Vector3 pos in curve)
+        List<CameraSetup> cameras = Main.Instance.GetCameras();
+        for (int i = 0; i < defined3DFigures.Count; i++)
         {
-            Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
-            sphere.gameObject.SetActive(true);
-            sphere.transform.position = pos;
-            sphere.transform.localScale = Vector3.one * .01f;
+            List<List<Vector3>> allCurves = new();
+            for (int j = 0; j < Enum.GetNames(typeof(Joints)).Length; j++)
+            {
+                List<Vector3> curve = BezierTrackForJointForFigure(cameras, j, i, frameCount).ToList();
+                allCurves.Add(curve);
+            }
+
+            float rightCalfDistance = AverageDistanceBetweenCurves(allCurves[(int)Joints.R_Knee], allCurves[(int)Joints.R_Ankle]);
+            float leftCalfDistance = AverageDistanceBetweenCurves(allCurves[(int)Joints.L_Knee], allCurves[(int)Joints.L_Ankle]);
+            
+            float averageCalfDistance = (rightCalfDistance + leftCalfDistance) / 2;
+            
+            float rightThighDistance = AverageDistanceBetweenCurves(allCurves[(int)Joints.R_Hip], allCurves[(int)Joints.R_Knee]);
+            float leftThighDistance = AverageDistanceBetweenCurves(allCurves[(int)Joints.L_Hip], allCurves[(int)Joints.L_Knee]);
+            
+            float averageThighDistance = (rightThighDistance + leftThighDistance) / 2;
+            
+            float rightArmDistance = AverageDistanceBetweenCurves(allCurves[(int)Joints.R_Shoulder], allCurves[(int)Joints.R_Elbow]);
+            float leftArmDistance = AverageDistanceBetweenCurves(allCurves[(int)Joints.L_Shoulder], allCurves[(int)Joints.L_Elbow]);
+            
+            float averageUpperArmDistance = (rightArmDistance + leftArmDistance) / 2;
+            
+            float rightForearmDistance = AverageDistanceBetweenCurves(allCurves[(int)Joints.R_Elbow], allCurves[(int)Joints.R_Wrist]);
+            float leftForearmDistance = AverageDistanceBetweenCurves(allCurves[(int)Joints.L_Elbow], allCurves[(int)Joints.L_Wrist]);
+            
+            float averageForearmDistance = (rightForearmDistance + leftForearmDistance) / 2;
+            
+            float pelvisDistance = AverageDistanceBetweenCurves(allCurves[(int)Joints.R_Hip], allCurves[(int)Joints.L_Hip]);
+            float shouldersDistance = AverageDistanceBetweenCurves(allCurves[(int)Joints.R_Shoulder], allCurves[(int)Joints.L_Shoulder]);
+            
+            Figure defined3DFigure = defined3DFigures[i];
+            
+            defined3DFigure.LimbLengths.Add(Limbs.R_Calf, averageCalfDistance);
+            defined3DFigure.LimbLengths.Add(Limbs.L_Calf, averageCalfDistance);
+            defined3DFigure.LimbLengths.Add(Limbs.R_Thigh, averageThighDistance);
+            defined3DFigure.LimbLengths.Add(Limbs.L_Thigh, averageThighDistance);
+            defined3DFigure.LimbLengths.Add(Limbs.R_Upper_Arm, averageUpperArmDistance);
+            defined3DFigure.LimbLengths.Add(Limbs.L_Upper_Arm, averageUpperArmDistance);
+            defined3DFigure.LimbLengths.Add(Limbs.R_Forearm, averageForearmDistance);
+            defined3DFigure.LimbLengths.Add(Limbs.L_Forearm, averageForearmDistance);
+            defined3DFigure.LimbLengths.Add(Limbs.Pelvis, pelvisDistance);
+            defined3DFigure.LimbLengths.Add(Limbs.Shoulders, shouldersDistance);
+
+            for (int k = 0; k < frameCount; k++)
+            {
+                List<Vector3> final3DPose = new();
+                for(int j = 0; j < Enum.GetNames(typeof(Joints)).Length; j++)
+                {
+                    Vector3 jointPos = Vector3.zero;
+                    final3DPose.Add(jointPos);
+                }
+                
+                Vector3 rAnklePos = allCurves[(int)Joints.R_Ankle][k];
+                Vector3 lAnklePos = allCurves[(int)Joints.L_Ankle][k];
+                
+                Vector3 rKneePos = allCurves[(int)Joints.R_Knee][k];
+                Vector3 lKneePos = allCurves[(int)Joints.L_Knee][k];
+                
+                Vector3 rHipPos = allCurves[(int)Joints.R_Hip][k];
+                Vector3 lHipPos = allCurves[(int)Joints.L_Hip][k];
+
+                if (rAnklePos.y < lAnklePos.y)
+                {
+                    // right ankle is lower to the ground
+                    final3DPose[(int)Joints.R_Ankle] = rAnklePos;
+                    rKneePos = rAnklePos + (rKneePos - rAnklePos).normalized * averageCalfDistance;
+                    final3DPose[(int)Joints.R_Knee] = rKneePos;
+                    rHipPos = rKneePos + (rHipPos - rKneePos).normalized * averageThighDistance;
+                    final3DPose[(int)Joints.R_Hip] = rHipPos;
+                    lHipPos = rHipPos + (lHipPos - rHipPos).normalized * pelvisDistance;
+                    final3DPose[(int)Joints.L_Hip] = lHipPos;
+                    lKneePos = lHipPos + (lKneePos - lHipPos).normalized * averageThighDistance;
+                    final3DPose[(int)Joints.L_Knee] = lKneePos;
+                    lAnklePos = lKneePos + (lAnklePos - lKneePos).normalized * averageCalfDistance;
+                    final3DPose[(int)Joints.L_Ankle] = lAnklePos;
+                }
+                else
+                {
+                    final3DPose[(int)Joints.L_Ankle] = lAnklePos;
+                    lKneePos = lAnklePos + (lKneePos - lAnklePos).normalized * averageCalfDistance;
+                    final3DPose[(int)Joints.L_Knee] = lKneePos;
+                    lHipPos = lKneePos + (lHipPos - lKneePos).normalized * averageThighDistance;
+                    final3DPose[(int)Joints.L_Hip] = lHipPos;
+                    rHipPos = lHipPos + (rHipPos - lHipPos).normalized * pelvisDistance;
+                    final3DPose[(int)Joints.R_Hip] = rHipPos;
+                    rKneePos = rHipPos + (rKneePos - rHipPos).normalized * averageThighDistance;
+                    final3DPose[(int)Joints.R_Knee] = rKneePos;
+                    rAnklePos = rKneePos + (rAnklePos - rKneePos).normalized * averageCalfDistance;
+                    final3DPose[(int)Joints.R_Ankle] = rAnklePos;
+                }
+                
+                Vector3 rShoulderPos = allCurves[(int)Joints.R_Shoulder][k];
+                Vector3 lShoulderPos = allCurves[(int)Joints.L_Shoulder][k];
+                
+                Vector3 rElbowPos = allCurves[(int)Joints.R_Elbow][k];
+                Vector3 lElbowPos = allCurves[(int)Joints.L_Elbow][k];
+                
+                Vector3 rWristPos = allCurves[(int)Joints.R_Wrist][k];
+                Vector3 lWristPos = allCurves[(int)Joints.L_Wrist][k];
+                
+                final3DPose[(int)Joints.R_Shoulder] = rShoulderPos;
+                rElbowPos = rShoulderPos + (rElbowPos - rShoulderPos).normalized * averageUpperArmDistance;
+                final3DPose[(int)Joints.R_Elbow] = rElbowPos;
+                rWristPos = rElbowPos + (rWristPos - rElbowPos).normalized * averageForearmDistance;
+                final3DPose[(int)Joints.R_Wrist] = rWristPos;
+                
+                final3DPose[(int)Joints.L_Shoulder] = lShoulderPos;
+                lElbowPos = lShoulderPos + (lElbowPos - lShoulderPos).normalized * averageUpperArmDistance;
+                final3DPose[(int)Joints.L_Elbow] = lElbowPos;
+                lWristPos = lElbowPos + (lWristPos - lElbowPos).normalized * averageForearmDistance;
+                final3DPose[(int)Joints.L_Wrist] = lWristPos;
+                
+                final3DPose[(int)Joints.Nose] = allCurves[(int)Joints.Nose][k];
+                final3DPose[(int)Joints.L_Eye] = allCurves[(int)Joints.L_Eye][k];
+                final3DPose[(int)Joints.R_Eye] = allCurves[(int)Joints.R_Eye][k];
+                final3DPose[(int)Joints.L_Ear] = allCurves[(int)Joints.L_Ear][k];
+                final3DPose[(int)Joints.R_Ear] = allCurves[(int)Joints.R_Ear][k];
+
+                defined3DFigure.AddFinal3DPose(final3DPose);
+            }
         }
+    }
+    
+    static float AverageDistanceBetweenCurves(IReadOnlyCollection<Vector3> curve1, IReadOnlyList<Vector3> curve2){
+        return curve1
+            .Select((t, i) => Vector3.Distance(t, curve2[i]))
+            .Sum() / curve1.Count;
     }
 }
