@@ -139,7 +139,7 @@ namespace UI
                         Vector3 intersection = myFigure.transform.InverseTransformPoint(rayPlaneIntersection.Value);
                         currentMarker.transform.localPosition =
                             new Vector3(intersection.x / scale.x, 0, intersection.z / scale.z);
-                        myFigure.SetPositions(Main.Instance.GetCurrentFrameNumber(), myCameraSetup.imgMeta);
+                        myFigure.Set2DPoseToCurrentMarkerPositionsAt(Main.Instance.GetCurrentFrameNumber());
                     }
                 }
 

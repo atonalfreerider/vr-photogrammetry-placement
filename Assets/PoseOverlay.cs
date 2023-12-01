@@ -53,7 +53,7 @@ public class PoseOverlay : MonoBehaviour
         }
     }
 
-    public void LoadPose(int frameNumber, Main.ImgMetadata imgMeta, GameObject photo)
+    public void LoadPose(int frameNumber, GameObject photo)
     {
         foreach (Figure figure in unknownFigures)
         {
@@ -62,7 +62,7 @@ public class PoseOverlay : MonoBehaviour
 
         foreach (Figure figure in definedFigures)
         {
-            figure.Set2DPose(frameNumber, imgMeta);
+            figure.SetMarkersToPoseAt(frameNumber);
         }
 
         if (definedFigures.All(x => x.HasPoseValueAt(frameNumber))) return;
@@ -84,7 +84,7 @@ public class PoseOverlay : MonoBehaviour
 
             Figure figureAtI = unknownFigures[i];
             figureAtI.SetVisible(true);
-            figureAtI.Set2DPose(frame[i], imgMeta);
+            figureAtI.SetMarkersToPose(frame[i]);
             figureAtI.SetPoseMarkerColliders(poseMarkerCollidersOn);
         }
     }
@@ -134,13 +134,13 @@ public class PoseOverlay : MonoBehaviour
         }
     }
 
-    public void CopyPoseAtFrameTo(Figure targetedFigure, int role, int currentFrameNumber, Main.ImgMetadata imgMeta)
+    public void CopyPoseAtFrameTo(Figure targetedFigure, int role, int currentFrameNumber)
     {
         if (role < 0) return;
         
         Figure figure0 = definedFigures[role];
-        figure0.posesByFrame[currentFrameNumber] = targetedFigure.Get2DPose(imgMeta);
-        figure0.Set2DPose(currentFrameNumber, imgMeta);
+        figure0.posesByFrame[currentFrameNumber] = targetedFigure.Get2DPoseFromCurrentMarkers();
+        figure0.SetMarkersToPoseAt(currentFrameNumber);
         figure0.SetVisible(true);
 
         targetedFigure.SetVisible(false);

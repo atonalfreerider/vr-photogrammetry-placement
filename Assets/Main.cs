@@ -228,6 +228,7 @@ public class Main : MonoBehaviour
     void SetInteractionMode(InteractionMode mode)
     {
         interactionMode = mode;
+        Debug.Log($"Interaction mode: {interactionMode}");
         switch (interactionMode)
         {
             case InteractionMode.PhotoAlignment:

@@ -41,6 +41,8 @@ namespace Pose
         // only set when figure is fully defined
         public List<List<Vector2>?> posesByFrame = new();
 
+        Main.ImgMetadata? imgMetadata => transform.parent.GetComponent<CameraSetup>().imgMeta;
+
         void Awake()
         {
             string[] enumNames = Enum.GetNames(typeof(Joints));
@@ -101,7 +103,7 @@ namespace Pose
             return staticLink;
         }
 
-        public List<Vector2> Get2DPose(Main.ImgMetadata? imgMetadata)
+        public List<Vector2> Get2DPoseFromCurrentMarkers()
         {
             if (imgMetadata == null) return new List<Vector2>();
             return poseMarkers.Select(poseMarker => new Vector2(
@@ -131,7 +133,7 @@ namespace Pose
             }
         }
 
-        public void SetPositions(int currentFrame, Main.ImgMetadata? imgMetadata)
+        public void Set2DPoseToCurrentMarkerPositionsAt(int currentFrame)
         {
             if (imgMetadata == null || currentFrame >= posesByFrame.Count) return;
             List<Vector2>? pose = posesByFrame[currentFrame];
@@ -186,7 +188,7 @@ namespace Pose
             UpdateLinks();
         }
 
-        public void Set2DPose(List<Vector2> pose, Main.ImgMetadata? imgMetadata)
+        public void SetMarkersToPose(List<Vector2> pose)
         {
             if (imgMetadata == null) return;
             for (int j = 0; j < pose.Count; j++)
@@ -206,25 +208,14 @@ namespace Pose
         /// <summary>
         /// Only used when figure is fully defined
         /// </summary>
-        public void Set2DPose(int frameNumber, Main.ImgMetadata? imgMetadata)
+        public void SetMarkersToPoseAt(int frameNumber)
         {
             if (imgMetadata == null) return;
             List<Vector2>? pose = posesByFrame[frameNumber];
 
             if (pose == null) return;
 
-            for (int j = 0; j < pose.Count; j++)
-            {
-                Polygon sphere = poseMarkers[j];
-                sphere.gameObject.SetActive(true);
-
-                sphere.transform.localPosition = new Vector3(
-                    pose[j].x / imgMetadata.Width,
-                    0,
-                    pose[j].y / imgMetadata.Height);
-            }
-
-            UpdateLinks();
+            SetMarkersToPose(pose);
         }
 
         public void SetPoseMarkerColliders(bool isOn)
@@ -245,7 +236,7 @@ namespace Pose
             return posesByFrame[frameNumber] != null;
         }
 
-        public void FlipPose()
+        public void FlipPose(int frameNumber)
         {
             List<Vector3> pose = poseMarkers.Select(x => x.transform.localPosition).ToList();
 
@@ -261,6 +252,8 @@ namespace Pose
             poseMarkers[(int)Joints.R_Knee].transform.localPosition = pose[(int)Joints.L_Knee];
             poseMarkers[(int)Joints.L_Ankle].transform.localPosition = pose[(int)Joints.R_Ankle];
             poseMarkers[(int)Joints.R_Ankle].transform.localPosition = pose[(int)Joints.L_Ankle];
+            
+            Set2DPoseToCurrentMarkerPositionsAt(frameNumber);
         }
     }
 }

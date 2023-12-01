@@ -89,7 +89,7 @@ public class CameraSetup : MonoBehaviour
 
         if (!isFirst && PoseOverlay != null)
         {
-            PoseOverlay.LoadPose(frameNumber, imgMeta, photo.gameObject);
+            PoseOverlay.LoadPose(frameNumber, photo.gameObject);
         }
     }
 

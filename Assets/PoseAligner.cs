@@ -100,7 +100,7 @@ public class PoseAligner : MonoBehaviour
         Figure myFigure = hit.Value.collider.GetComponent<Polygon>().myFigure;
         CameraSetup myCameraSetup = myFigure.transform.parent.GetComponent<CameraSetup>();
         if (myCameraSetup.PoseOverlay == null) return;
-        myCameraSetup.PoseOverlay.CopyPoseAtFrameTo(myFigure, role, currentFrameNumber, myCameraSetup.imgMeta);
+        myCameraSetup.PoseOverlay.CopyPoseAtFrameTo(myFigure, role, currentFrameNumber);
     }
 
     public void Draw3DPoses(Dictionary<int, CameraSetup> cameras)
@@ -164,7 +164,7 @@ public class PoseAligner : MonoBehaviour
 
             if (Keyboard.current.fKey.wasPressedThisFrame)
             {
-                hitPolygon.myFigure.FlipPose();
+                hitPolygon.myFigure.FlipPose(Main.Instance.GetCurrentFrameNumber());
             }
         }
         else if (currentHighlightedMarker != null)
