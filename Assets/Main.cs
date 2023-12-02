@@ -168,7 +168,7 @@ public class Main : MonoBehaviour
         if (PoseAligner != null)
         {
             //PoseAligner.Draw3DPoses(cameras.Values.ToList());
-            PoseAligner.DrawAllTrails(15);
+            PoseAligner.DrawAllTrails(132);
             PoseAligner.Draw3DPoseAtFrame(0);
         }
     }

@@ -192,6 +192,12 @@ public class PoseAligner : MonoBehaviour
             {
                 hitPolygon.myFigure.FlipPose(Main.Instance.GetCurrentFrameNumber());
             }
+
+            if (Keyboard.current.mKey.wasPressedThisFrame)
+            {
+                hitPolygon.myFigure.SetMarkersToPoseAt(Main.Instance.GetCurrentFrameNumber() - 1);
+                hitPolygon.myFigure.Set2DPoseToCurrentMarkerPositionsAt(Main.Instance.GetCurrentFrameNumber());
+            }
         }
         else if (currentHighlightedMarker != null)
         {
