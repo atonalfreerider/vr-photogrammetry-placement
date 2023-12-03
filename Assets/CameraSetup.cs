@@ -5,6 +5,7 @@ using System.IO;
 using Newtonsoft.Json;
 using Shapes;
 using Shapes.Lines;
+using UI;
 using UnityEngine;
 
 public class CameraSetup : MonoBehaviour
@@ -24,7 +25,7 @@ public class CameraSetup : MonoBehaviour
     readonly Dictionary<int, Polygon> cameraMarkers = new();
     readonly Dictionary<int, Polygon> worldAnchorMarkers = new();
 
-    public Plane CurrentPlane => new(photo.transform.up, photo.transform.position);
+    Plane currentPlane => new(photo.transform.up, photo.transform.position);
     public GameObject GetPhotoGameObject => photo.gameObject;
 
     void Awake()
@@ -141,9 +142,7 @@ public class CameraSetup : MonoBehaviour
 
         return entropy;
     }
-
-    public Vector3 PhotoScale => photo.transform.localScale;
-
+    
     void LoadGroundingFeatures(string jsonPath)
     {
         GroundingFeatures groundingFeatures = JsonConvert.DeserializeObject<GroundingFeatures>(
@@ -175,6 +174,20 @@ public class CameraSetup : MonoBehaviour
                 sphere.SetColor(Color.blue);
             }
         }
+    }
+
+    public Vector3? Intersection(Ray ray)
+    {
+        Vector3? rayPlaneIntersection = Raycast.PlaneIntersection(
+            currentPlane,
+            ray);
+        if (rayPlaneIntersection.HasValue)
+        {
+            Vector3 intersection = photo.transform.InverseTransformPoint(rayPlaneIntersection.Value);
+            return intersection;
+        }
+
+        return null;
     }
 
     [Serializable]

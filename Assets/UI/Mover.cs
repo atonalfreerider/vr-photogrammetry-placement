@@ -46,7 +46,7 @@ namespace UI
         bool isGrabbing = false;
         CameraSetup? currentPhoto;
         Polygon? currentMarker;
-    
+
         public RaycastHit? CastRay() => raycast != null ? raycast.CastRay() : CastMouse();
 
         static RaycastHit? CastMouse()
@@ -55,7 +55,8 @@ namespace UI
             return hit;
         }
 
-        public static Ray RayFromMouseCursor() => SDKManager.MainCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
+        static Ray RayFromMouseCursor() =>
+            SDKManager.MainCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
 
         void OnTriggerEnter(Collider other)
         {
@@ -85,6 +86,7 @@ namespace UI
                         {
                             currentPhoto = boxCollider.transform.parent.GetComponent<CameraSetup>();
                         }
+
                         break;
                     case SphereCollider sphereCollider:
                         // move whole camera
@@ -132,15 +134,14 @@ namespace UI
                     CameraSetup? myCameraSetup = myFigure.transform.parent.GetComponent<CameraSetup>();
                     if (myCameraSetup != null)
                     {
-                        Vector3? rayPlaneIntersection = Raycast.PlaneIntersection(
-                            myCameraSetup.CurrentPlane,
-                            raycast != null ? raycast.transform : null);
-                        if (rayPlaneIntersection.HasValue)
+                        Ray ray = raycast != null
+                            ? new Ray(raycast.transform.position, raycast.transform.forward)
+                            : RayFromMouseCursor();
+                        Vector3? intersection = myCameraSetup.Intersection(ray);
+                        if (intersection.HasValue)
                         {
-                            Vector3 scale = myCameraSetup.PhotoScale;
-                            Vector3 intersection = myFigure.transform.InverseTransformPoint(rayPlaneIntersection.Value);
                             currentMarker.transform.localPosition =
-                                new Vector3(intersection.x / scale.x, 0, intersection.z / scale.z);
+                                new Vector3(intersection.Value.x, 0, intersection.Value.z);
                             myFigure.Set2DPoseToCurrentMarkerPositionsAt(Main.Instance.GetCurrentFrameNumber());
                         }
                     }

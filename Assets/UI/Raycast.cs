@@ -39,11 +39,8 @@ namespace UI
             return collisionPoint;
         }
     
-        public static Vector3? PlaneIntersection(Plane plane, Transform? passTrans)
+        public static Vector3? PlaneIntersection(Plane plane, Ray ray)
         {
-            Ray ray = passTrans != null 
-                ? new Ray(passTrans.position, passTrans.forward) 
-                : Mover.RayFromMouseCursor();
             if (!plane.Raycast(ray, out float distanceAlongRay)) return null;
 
             Vector3 collisionPoint = ray.GetPoint(distanceAlongRay);
