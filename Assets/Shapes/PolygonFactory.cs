@@ -9,7 +9,8 @@ namespace Shapes
         public PolygonPool PolygonPool;
         public Material textureMat;
         public Material mainMat;
-        public Polygon icosahedron0, tri;
+        public Polygon icosahedron0;
+        public Polygon quad;
         
         void Awake()
         {
@@ -31,12 +32,12 @@ namespace Shapes
             icosahedron0.transform.SetParent(transform, false);
             icosahedron0.gameObject.SetActive(false);
             
-            tri = NewPoly(mainMat);
-            tri.DrawRegPoly(1, 3, 0, 0, 0, true);
-            tri.name = "triangle";
-            tri.SetColor(Color.white);
-            tri.transform.SetParent(transform, false);
-            tri.gameObject.SetActive(false);
+            quad = NewPoly(mainMat);
+            quad.DrawRegPoly(1, 4, 0, 0, 0, true);
+            quad.name = "triangle";
+            quad.SetColor(Color.white);
+            quad.transform.SetParent(transform, false);
+            quad.gameObject.SetActive(false);
         }
 
         public static Polygon NewPoly(Material passMat)

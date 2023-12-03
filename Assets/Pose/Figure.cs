@@ -60,6 +60,9 @@ namespace Pose
 
         readonly List<List<Vector3>> finalPoses = new();
 
+        GameObject rig;
+        List<GameObject> AvatarCollidersList = new();
+
         Main.ImgMetadata? imgMetadata => transform.parent.GetComponent<CameraSetup>().imgMeta;
 
         void Awake()
@@ -96,6 +99,13 @@ namespace Pose
             jointLinks.Add(LinkFromTo((int)Joints.R_Hip, (int)Joints.L_Hip, poseMarkers));
             jointLinks.Add(LinkFromTo((int)Joints.R_Shoulder, (int)Joints.R_Hip, poseMarkers));
             jointLinks.Add(LinkFromTo((int)Joints.L_Shoulder, (int)Joints.L_Hip, poseMarkers));
+        }
+
+        public void Init3D()
+        {
+            rig = new GameObject("rig");
+            rig.transform.SetParent(transform, false);
+            AvatarColliders();
         }
 
         public void DrawNames()
@@ -202,6 +212,7 @@ namespace Pose
             }
 
             UpdateLinks();
+            UpdateAvatar();
         }
 
         public void Set3DPoseAt(int frameNumber)
@@ -258,6 +269,180 @@ namespace Pose
             return poseMarkers[jointNumber];
         }
 
+        void AvatarColliders()
+        {
+            GameObject leftCalf = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            leftCalf.transform.SetParent(rig.transform, false);
+            AvatarCollidersList.Add(leftCalf);
+
+
+            GameObject rightCalf = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            rightCalf.transform.SetParent(rig.transform, false);
+            AvatarCollidersList.Add(rightCalf);
+
+            GameObject leftThigh = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            leftThigh.transform.SetParent(rig.transform, false);
+            AvatarCollidersList.Add(leftThigh);
+
+            GameObject rightThigh = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            rightThigh.transform.SetParent(rig.transform, false);
+            AvatarCollidersList.Add(rightThigh);
+
+            GameObject leftArm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            leftArm.transform.SetParent(rig.transform, false);
+            AvatarCollidersList.Add(leftArm);
+
+            GameObject rightArm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            rightArm.transform.SetParent(rig.transform, false);
+            AvatarCollidersList.Add(rightArm);
+
+            GameObject leftForearm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            leftForearm.transform.SetParent(rig.transform, false);
+            AvatarCollidersList.Add(leftForearm);
+
+            GameObject rightForearm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            rightForearm.transform.SetParent(rig.transform, false);
+            AvatarCollidersList.Add(rightForearm);
+
+            GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            head.transform.SetParent(rig.transform, false);
+            AvatarCollidersList.Add(head);
+
+            GameObject chestBox = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            chestBox.transform.SetParent(rig.transform, false);
+            AvatarCollidersList.Add(chestBox);
+        }
+
+        void UpdateAvatar()
+        {
+            float calfRadius = role == 0 ? 0.121f : .12f;
+            float thighRadius = role == 0 ? 0.155f : .15f;
+            float armRadius = role == 0 ? 0.12f : .05f;
+            float forearmRadius = role == 0 ? 0.1f : .05f;
+            float headRadius = role == 0 ? 0.3f : .5f;
+
+            GameObject leftCalf = AvatarCollidersList[0];
+            Vector3 leftCalfStart = poseMarkers[(int)Joints.L_Knee].transform.position;
+            Vector3 leftCalfEnd = poseMarkers[(int)Joints.L_Ankle].transform.position;
+            leftCalf.transform.position = (leftCalfStart + leftCalfEnd) / 2;
+            leftCalf.transform.localScale =
+                new Vector3(calfRadius, Vector3.Distance(leftCalfStart, leftCalfEnd) / 2, calfRadius);
+            leftCalf.transform.LookAt(leftCalfStart);
+            leftCalf.transform.Rotate(Vector3.right, 90);
+
+            GameObject rightCalf = AvatarCollidersList[1];
+            Vector3 rightCalfStart = poseMarkers[(int)Joints.R_Knee].transform.position;
+            Vector3 rightCalfEnd = poseMarkers[(int)Joints.R_Ankle].transform.position;
+            rightCalf.transform.position = (rightCalfStart + rightCalfEnd) / 2;
+            rightCalf.transform.localScale =
+                new Vector3(calfRadius, Vector3.Distance(rightCalfStart, rightCalfEnd) / 2, calfRadius);
+            rightCalf.transform.LookAt(rightCalfStart);
+            rightCalf.transform.Rotate(Vector3.right, 90);
+
+            GameObject leftThigh = AvatarCollidersList[2];
+            Vector3 leftThighStart = poseMarkers[(int)Joints.L_Hip].transform.position;
+            Vector3 leftThighEnd = poseMarkers[(int)Joints.L_Knee].transform.position;
+            leftThigh.transform.position = (leftThighStart + leftThighEnd) / 2;
+            leftThigh.transform.localScale = new Vector3(thighRadius,
+                Vector3.Distance(leftThighStart, leftThighEnd) / 2, thighRadius);
+            leftThigh.transform.LookAt(leftThighStart);
+            leftThigh.transform.Rotate(Vector3.right, 90);
+
+            GameObject rightThigh = AvatarCollidersList[3];
+            Vector3 rightThighStart = poseMarkers[(int)Joints.R_Hip].transform.position;
+            Vector3 rightThighEnd = poseMarkers[(int)Joints.R_Knee].transform.position;
+            rightThigh.transform.position = (rightThighStart + rightThighEnd) / 2;
+            rightThigh.transform.localScale = new Vector3(thighRadius,
+                Vector3.Distance(rightThighStart, rightThighEnd) / 2, thighRadius);
+            rightThigh.transform.LookAt(rightThighStart);
+            rightThigh.transform.Rotate(Vector3.right, 90);
+
+            GameObject leftArm = AvatarCollidersList[4];
+            Vector3 leftArmStart = poseMarkers[(int)Joints.L_Shoulder].transform.position;
+            Vector3 leftArmEnd = poseMarkers[(int)Joints.L_Elbow].transform.position;
+            leftArm.transform.position = (leftArmStart + leftArmEnd) / 2;
+            leftArm.transform.localScale =
+                new Vector3(armRadius, Vector3.Distance(leftArmStart, leftArmEnd) / 2, armRadius);
+            leftArm.transform.LookAt(leftArmStart);
+            leftArm.transform.Rotate(Vector3.right, 90);
+
+            GameObject rightArm = AvatarCollidersList[5];
+            Vector3 rightArmStart = poseMarkers[(int)Joints.R_Shoulder].transform.position;
+            Vector3 rightArmEnd = poseMarkers[(int)Joints.R_Elbow].transform.position;
+            rightArm.transform.position = (rightArmStart + rightArmEnd) / 2;
+            rightArm.transform.localScale =
+                new Vector3(armRadius, Vector3.Distance(rightArmStart, rightArmEnd) / 2, armRadius);
+            rightArm.transform.LookAt(rightArmStart);
+            rightArm.transform.Rotate(Vector3.right, 90);
+
+            GameObject leftForearm = AvatarCollidersList[6];
+            Vector3 leftForearmStart = poseMarkers[(int)Joints.L_Elbow].transform.position;
+            Vector3 leftForearmEnd = poseMarkers[(int)Joints.L_Wrist].transform.position;
+            leftForearm.transform.position = (leftForearmStart + leftForearmEnd) / 2;
+            leftForearm.transform.localScale = new Vector3(forearmRadius,
+                Vector3.Distance(leftForearmStart, leftForearmEnd) / 2, forearmRadius);
+            leftForearm.transform.LookAt(leftForearmStart);
+            leftForearm.transform.Rotate(Vector3.right, 90);
+
+            GameObject rightForearm = AvatarCollidersList[7];
+            Vector3 rightForearmStart = poseMarkers[(int)Joints.R_Elbow].transform.position;
+            Vector3 rightForearmEnd = poseMarkers[(int)Joints.R_Wrist].transform.position;
+            rightForearm.transform.position = (rightForearmStart + rightForearmEnd) / 2;
+            rightForearm.transform.localScale = new Vector3(forearmRadius,
+                Vector3.Distance(rightForearmStart, rightForearmEnd) / 2, forearmRadius);
+            rightForearm.transform.LookAt(rightForearmStart);
+            rightForearm.transform.Rotate(Vector3.right, 90);
+
+            GameObject head = AvatarCollidersList[8];
+            Vector3 headStart = poseMarkers[(int)Joints.L_Ear].transform.position;
+            Vector3 headEnd = poseMarkers[(int)Joints.R_Ear].transform.position;
+            head.transform.position = (headStart + headEnd) / 2;
+            head.transform.localScale = new Vector3(headRadius, headRadius, headRadius);
+            head.transform.LookAt(poseMarkers[(int)Joints.Nose].transform.position);
+
+            GameObject chestBox = AvatarCollidersList[9];
+            Vector3 lShoulder = poseMarkers[(int)Joints.L_Shoulder].transform.position;
+            Vector3 rShoulder = poseMarkers[(int)Joints.R_Shoulder].transform.position;
+            Vector3 shoulderMidpoint = (lShoulder + rShoulder) / 2;
+
+            Vector3 hipMidpoint = (poseMarkers[(int)Joints.L_Hip].transform.position +
+                                   poseMarkers[(int)Joints.R_Hip].transform.position) / 2;
+
+            Vector3 bodyAxis = hipMidpoint - shoulderMidpoint;
+            Vector3 shoulderVector = lShoulder - rShoulder;
+            Vector3 forwardVector = Vector3.Cross(shoulderVector, bodyAxis);
+            Vector3 upVector = Vector3.Cross(shoulderVector, forwardVector).normalized;
+            forwardVector = Vector3.Cross(upVector, shoulderVector).normalized;
+
+            chestBox.transform.position = (shoulderMidpoint + hipMidpoint) / 2;
+            chestBox.transform.rotation = Quaternion.LookRotation(forwardVector, upVector);
+            chestBox.transform.localScale = new Vector3(
+                Vector3.Distance(poseMarkers[(int)Joints.L_Shoulder].transform.position,
+                    poseMarkers[(int)Joints.R_Shoulder].transform.position),
+                Vector3.Distance(shoulderMidpoint, hipMidpoint),
+                .2f);
+            chestBox.transform.Translate(Vector3.forward * .07f);
+        }
+
+        public List<Collider> GetRigColliders()
+        {
+            List<Collider> colliders = new List<Collider>();
+            foreach (GameObject child in AvatarCollidersList)
+            {
+                colliders.Add(child.GetComponent<Collider>());
+            }
+
+            return colliders;
+        }
+
+        public void ToggleRig(bool isOn)
+        {
+            foreach (GameObject child in AvatarCollidersList)
+            {
+                child.SetActive(isOn);
+            }
+        }
+
         public Vector3 GetJointAtFrame(int joint, int frame)
         {
             if (frame >= posesByFrame.Count) return Vector3.zero;
@@ -304,17 +489,17 @@ namespace Pose
             string jsonString = JsonConvert.SerializeObject(finalFloat3Poses, Formatting.Indented);
             string jsonPath = Path.Combine(jsonDirectory, $"figure{role}.json");
             File.WriteAllText(jsonPath, jsonString);
-            
+
             Debug.Log($"Serialized {finalPoses.Count} poses to {jsonPath}");
         }
-        
+
         [Serializable]
         class Float3
         {
             public float x;
             public float y;
             public float z;
-            
+
             public Float3(float x, float y, float z)
             {
                 this.x = x;

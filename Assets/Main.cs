@@ -312,7 +312,8 @@ public class Main : MonoBehaviour
 
         if (Keyboard.current.f6Key.wasPressedThisFrame)
         {
-            GetComponent<Photogrammetry>().Run(cameras.Values.ToList());
+            GetComponent<Photogrammetry>().Run(cameras.Values.ToList(), PoseAligner.AllFullyDefinedPoses());
+            PoseAligner.ToggleRigs(false);
         }
 
         if (Keyboard.current.f9Key.wasPressedThisFrame)

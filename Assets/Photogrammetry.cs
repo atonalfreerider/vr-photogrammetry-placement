@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Render;
 using Shapes;
@@ -7,8 +6,8 @@ using UnityEngine;
 
 public class Photogrammetry : MonoBehaviour
 {
-    const int IterationsPerSide = 100;
-    const float StepSize = .01f;
+    const float length = 2.5f;
+    const float StepSize = .005f;
 
     readonly Dictionary<int, Color> colorDictionary = new();
     readonly Dictionary<int, List<MeshFilter>> meshDictionary = new();
@@ -21,7 +20,10 @@ public class Photogrammetry : MonoBehaviour
         colorDictionary.Add(2, new Color(.7f, .7f, 1));
         colorDictionary.Add(3, new Color(.3f, .3f, .7f));
         colorDictionary.Add(4, new Color(.8f, .6f, .5f));
-        colorDictionary.Add(5, new Color(1f, .1f, .1f));
+        colorDictionary.Add(5, new Color(.7f, .5f, .35f));
+        colorDictionary.Add(6, new Color(.8f, .1f, .1f));
+        colorDictionary.Add(7, new Color(.6f, .1f, .1f));
+        colorDictionary.Add(8, new Color(.4f, .1f, .1f));
 
         for (int i = 0; i < colorDictionary.Count; i++)
         {
@@ -31,57 +33,93 @@ public class Photogrammetry : MonoBehaviour
         }
     }
 
-    public void Run(List<CameraSetup> cameras)
+    public void Run(List<CameraSetup> cameras, List<Collider> allPoses)
     {
-        float length = IterationsPerSide * StepSize;
-
         List<Vector3> cameraPositions = cameras.Select(x => x.transform.position).ToList();
 
-        for (float x = 0; x < length; x += StepSize)
+        for (float x = -length; x < length; x += StepSize)
         {
-            for (float y = 0; y < length * 2; y += StepSize)
+            for (float y = 0; y < length; y += StepSize)
             {
-                for (float z = 0; z < length; z += StepSize)
+                for (float z = -length; z < length; z += StepSize)
                 {
                     Vector3 point = new Vector3(x, y, z);
-                    List<Color?> colors = cameras
-                        .Select(cameraSetup => cameraSetup.ColorFromIntersection(point)).ToList();
 
-                    int i = 0;
-                    foreach (Color? color in colors)
+                    // only attempt to render a pixel that is inside of an avatar
+                    Collider? myCollider = null;
+                    foreach (Collider collider in allPoses)
                     {
-                        if (color == null)
+                        if (collider.bounds.Contains(point))
                         {
-                            i++;
-                            continue;
+                            myCollider = collider;
+                            break;
                         }
+                    }
 
-                        int myMatches = 0;
+                    if (myCollider == null) continue;
+                    
+                    List<Collider> collidersToAvoid = allPoses.Where(x => x != myCollider).ToList();
 
-                        int j = 0;
-                        foreach (Color? color1 in colors)
+                    // filter out cameras that are blocked by another limb or avatar
+                    List<int> visibleCameraIndices = new();
+                    int camCount = 0;
+                    foreach (CameraSetup cameraSetup in cameras)
+                    {
+                        Ray ray = new Ray(point, point - cameraSetup.transform.position);
+                        RaycastHit[] hits = Physics.RaycastAll(ray);
+                        if (hits.Any())
                         {
-                            if (i == j || color1 == null)
+                            List<Collider> hitColliders = hits.Select(x => x.collider).ToList();
+                            bool isBroken = false;
+                            foreach (Collider hitCollider in hitColliders)
                             {
-                                j++;
-                                continue;
+                                if (myCollider == hitCollider) continue;
+                                if (collidersToAvoid.Contains(hitCollider))
+                                {
+                                    isBroken = true;
+                                    camCount++;
+                                    break;
+                                }
                             }
 
-                            float colorDistance = ColorDistance(color.Value, color1.Value);
-                            if (colorDistance < .3f)
+                            if (isBroken) continue;
+
+                            visibleCameraIndices.Add(camCount);
+                            camCount++;
+                        }
+                        else
+                        {
+                            camCount++;
+                        }
+                    }
+
+                    // compare color distance of each camera to create pixel
+                    foreach (int visibleCameraIndex in visibleCameraIndices)
+                    {
+                        int myMatches = 0;
+                        Color? color = cameras[visibleCameraIndex].ColorFromIntersection(point);
+                        if(color == null) continue;
+                        foreach (int otherCamIndex in visibleCameraIndices)
+                        {
+                            if(visibleCameraIndex == otherCamIndex) continue;
+                            Color? otherColor = cameras[otherCamIndex].ColorFromIntersection(point);
+                            if(otherColor == null) continue;
+                            
+                            float colorDistance = ColorDistance(color.Value, otherColor.Value);
+                            if (colorDistance < .35f)
                             {
                                 myMatches++;
                             }
-
-                            j++;
                         }
-
+                        
                         if (myMatches > 1)
                         {
+                            // draw pixel
                             Polygon pixel = DrawPixel(point, myMatches);
-                            pixel.transform.LookAt(cameraPositions[i]);
+                            pixel.transform.LookAt(cameraPositions[visibleCameraIndex]);
                             pixel.transform.Rotate(Vector3.right, 90);
 
+                            // sort into combiner group
                             int closestDIndex = 0;
                             float closestD = 10;
                             for (int k = 0; k < colorDictionary.Count; k++)
@@ -96,8 +134,6 @@ public class Photogrammetry : MonoBehaviour
 
                             meshDictionary[closestDIndex].Add(pixel.meshFilter);
                         }
-
-                        i++;
                     }
                 }
             }
@@ -122,11 +158,11 @@ public class Photogrammetry : MonoBehaviour
 
     Polygon DrawPixel(Vector3 pos, float size)
     {
-        Polygon triangle = Instantiate(PolygonFactory.Instance.tri);
+        Polygon triangle = Instantiate(PolygonFactory.Instance.quad);
         triangle.gameObject.SetActive(true);
         triangle.transform.SetParent(transform, false);
         triangle.transform.localPosition = pos;
-        triangle.transform.localScale = Vector3.one * size * .002f;
+        triangle.transform.localScale = Vector3.one * (size * .002f);
         return triangle;
     }
 }

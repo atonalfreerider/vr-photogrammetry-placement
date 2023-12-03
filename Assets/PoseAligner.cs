@@ -28,11 +28,12 @@ public class PoseAligner : MonoBehaviour
         for (int i = 0; i < 2; i++)
         {
             Figure figure3D = new GameObject($"figure3D-{i}").AddComponent<Figure>();
+            figure3D.SetRole(i);
+            figure3D.Init3D();
             figure3D.transform.SetParent(transform, false);
             figure3D.SetVisible(true);
             defined3DFigures.Add(figure3D);
         }
-
 
         int count = 0;
         SqliteInput sqliteInput = GetComponent<SqliteInput>();
@@ -376,5 +377,24 @@ public class PoseAligner : MonoBehaviour
         return curve1
             .Select((t, i) => Vector3.Distance(t, curve2[i]))
             .Sum() / curve1.Count;
+    }
+
+    public List<Collider> AllFullyDefinedPoses()
+    {
+        List<Collider> toReturn = new();
+        foreach (Figure figure in defined3DFigures)
+        {
+            toReturn.AddRange(figure.GetRigColliders());
+        }
+
+        return toReturn;
+    }
+
+    public void ToggleRigs(bool show)
+    {
+        foreach (Figure figure in defined3DFigures)
+        {
+            figure.ToggleRig(show);
+        }
     }
 }
