@@ -8,7 +8,7 @@ namespace Shapes
         public static PolygonFactory Instance;
         public PolygonPool PolygonPool;
         public Material mainMat;
-        public Polygon icosahedron0;
+        public Polygon icosahedron0, tri;
         
         void Awake()
         {
@@ -29,6 +29,13 @@ namespace Shapes
             icosahedron0.SetColor(Color.white);
             icosahedron0.transform.SetParent(transform, false);
             icosahedron0.gameObject.SetActive(false);
+            
+            tri = NewPoly(mainMat);
+            tri.DrawRegPoly(1, 3, 0, 0, 0, true);
+            tri.name = "triangle";
+            tri.SetColor(Color.white);
+            tri.transform.SetParent(transform, false);
+            tri.gameObject.SetActive(false);
         }
 
         public static Polygon NewPoly(Material passMat)

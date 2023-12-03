@@ -13,11 +13,12 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using VRTKLite.SDK;
 
+[RequireComponent(typeof(Photogrammetry))]
 public class Main : MonoBehaviour
 {
     [Header("Parameters")] public string PhotoFolderPath;
 
-    Mover mover;
+    Mover? mover;
     public SDKManager SDKManager;
     public PoseAligner? PoseAligner;
 
@@ -167,9 +168,9 @@ public class Main : MonoBehaviour
 
         if (PoseAligner != null)
         {
-            //PoseAligner.Draw3DPoses(cameras.Values.ToList());
-            PoseAligner.DrawAllTrails(132);
-            PoseAligner.Draw3DPoseAtFrame(0);
+            PoseAligner.Draw3DPoses(cameras.Values.ToList());
+            //PoseAligner.DrawAllTrails(132);
+            //PoseAligner.Draw3DPoseAtFrame(0);
         }
     }
 
@@ -204,7 +205,7 @@ public class Main : MonoBehaviour
         if (PoseAligner != null)
         {
             //PoseAligner.Draw3DPoses(cameras.Values.ToList());
-            PoseAligner.Draw3DPoseAtFrame(currentFrameNumber);
+            //PoseAligner.Draw3DPoseAtFrame(currentFrameNumber);
         }
     }
 
@@ -222,7 +223,7 @@ public class Main : MonoBehaviour
         if (PoseAligner != null)
         {
             //PoseAligner.Draw3DPoses(cameras.Values.ToList());
-            PoseAligner.Draw3DPoseAtFrame(currentFrameNumber);
+            //PoseAligner.Draw3DPoseAtFrame(currentFrameNumber);
         }
     }
 
@@ -285,11 +286,11 @@ public class Main : MonoBehaviour
             Reverse();
         }
 
-        if (Mouse.current.leftButton.wasPressedThisFrame)
+        if (Mouse.current.leftButton.wasPressedThisFrame && mover != null)
         {
             mover.Grab();
         }
-        else if (Mouse.current.leftButton.wasReleasedThisFrame)
+        else if (Mouse.current.leftButton.wasReleasedThisFrame && mover != null)
         {
             mover.Release();
         }
@@ -307,6 +308,11 @@ public class Main : MonoBehaviour
                 DrawPreviousSpear();
                 MarkFigure2();
             }
+        }
+
+        if (Keyboard.current.f6Key.wasPressedThisFrame)
+        {
+            GetComponent<Photogrammetry>().Run(cameras.Values.ToList());
         }
 
         if (Keyboard.current.f9Key.wasPressedThisFrame)

@@ -12,6 +12,7 @@ public class CameraSetup : MonoBehaviour
 {
     public PoseOverlay? PoseOverlay;
     Rectangle photo;
+    Texture2D currentTexture;
     Polygon focalSphere;
     string dirPath;
 
@@ -74,11 +75,11 @@ public class CameraSetup : MonoBehaviour
         string imageName = Path.Combine(dirPath, $"{frameNumber:000}.jpg");
         if (File.Exists(imageName))
         {
-            Texture2D texture =
-                new(TextureScale, TextureScale, TextureFormat.RGBA32, false)
+            currentTexture =
+                new Texture2D(TextureScale, TextureScale, TextureFormat.RGBA32, false)
                     { filterMode = FilterMode.Point };
-            texture.LoadImage(File.ReadAllBytes(imageName));
-            imgMeta = new Main.ImgMetadata(5, texture.width, texture.height);
+            currentTexture.LoadImage(File.ReadAllBytes(imageName));
+            imgMeta = new Main.ImgMetadata(5, currentTexture.width, currentTexture.height);
         }
         else
         {
@@ -142,7 +143,7 @@ public class CameraSetup : MonoBehaviour
 
         return entropy;
     }
-    
+
     void LoadGroundingFeatures(string jsonPath)
     {
         GroundingFeatures groundingFeatures = JsonConvert.DeserializeObject<GroundingFeatures>(
@@ -174,6 +175,21 @@ public class CameraSetup : MonoBehaviour
                 sphere.SetColor(Color.blue);
             }
         }
+    }
+
+    public Color? ColorFromIntersection(Vector3 voxelPos)
+    {
+        Vector3? intersection = Intersection(new Ray(transform.position, (voxelPos - transform.position).normalized));
+        if (intersection.HasValue)
+        {
+            Vector3 localIntersection = intersection.Value;
+            Color color = currentTexture.GetPixel(
+                (int)(localIntersection.x * imgMeta.Width)  + imgMeta.Width / 2,
+                (int)(localIntersection.z * imgMeta.Height) + imgMeta.Height / 2);
+            if (color != Color.black) return color;
+        }
+
+        return null;
     }
 
     public Vector3? Intersection(Ray ray)

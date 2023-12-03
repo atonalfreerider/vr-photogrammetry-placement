@@ -20,7 +20,7 @@ namespace Shapes
 
         #region DRAW Functions
 
-        public void DrawRegPoly(float radius, int sides, float offSet, float h, float taper)
+        public void DrawRegPoly(float radius, int sides, float offSet, float h, float taper, bool oneSided = false)
         {
             Vector3[] verts = new Vector3[sides];
             int numTriangles = sides - 2;
@@ -44,7 +44,14 @@ namespace Shapes
 
             if (h <= float.Epsilon)
             {
-                Draw3DPoly(verts, MirrorIndices(indices, 0));
+                if (!oneSided)
+                {
+                    Draw3DPoly(verts, MirrorIndices(indices, 0));
+                }
+                else
+                {
+                    Draw3DPoly(verts, indices);
+                }
             }
             else
             {
