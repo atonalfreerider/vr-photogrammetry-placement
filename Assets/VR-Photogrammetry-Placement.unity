@@ -550,6 +550,7 @@ GameObject:
   - component: {fileID: 1040558336}
   - component: {fileID: 1040558334}
   - component: {fileID: 1040558335}
+  - component: {fileID: 1040558337}
   m_Layer: 0
   m_Name: Main
   m_TagString: Untagged
@@ -597,8 +598,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   PolygonPool: {fileID: 1040558331}
-  mainMat: {fileID: 2100000, guid: 09e4a2bdcbd93f44bbc7c705e4128c39, type: 2}
+  textureMat: {fileID: 2100000, guid: 09e4a2bdcbd93f44bbc7c705e4128c39, type: 2}
+  mainMat: {fileID: 2100000, guid: 2998747c4926f2044882ff71e157b3f8, type: 2}
   icosahedron0: {fileID: 0}
+  tri: {fileID: 0}
 --- !u!114 &1040558333
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -654,6 +657,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   JsonDir: C:\Users\john\Desktop
   mover: {fileID: 0}
+--- !u!114 &1040558337
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1040558329}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d8c0a72c4b74ac696cc954bd7495f08, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1260088892
 GameObject:
   m_ObjectHideFlags: 0

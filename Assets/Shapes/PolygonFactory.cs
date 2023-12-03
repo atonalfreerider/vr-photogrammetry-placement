@@ -7,6 +7,7 @@ namespace Shapes
     {
         public static PolygonFactory Instance;
         public PolygonPool PolygonPool;
+        public Material textureMat;
         public Material mainMat;
         public Polygon icosahedron0, tri;
         

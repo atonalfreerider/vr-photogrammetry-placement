@@ -53,7 +53,7 @@ namespace Shapes
 
         public static void InitCube(PolygonFactory polygonFactory)
         {
-            textureRectPoly = PolygonFactory.NewRectPoly(PolygonFactory.Instance.mainMat);
+            textureRectPoly = PolygonFactory.NewRectPoly(PolygonFactory.Instance.textureMat);
             textureRectPoly.DrawRect(1, 1, 0);
             Mesh textureMesh = textureRectPoly.meshFilter.mesh;
             Vector3[] vertices = textureMesh.vertices;
