@@ -652,6 +652,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c173884432794e7c8b9418d0020be54e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  JsonDir: C:\Users\john\Desktop
   mover: {fileID: 0}
 --- !u!1 &1260088892
 GameObject:

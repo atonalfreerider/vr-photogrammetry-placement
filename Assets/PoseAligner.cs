@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json;
 using Pose;
 using Shapes;
 using Shapes.Lines;
@@ -14,6 +15,8 @@ using Util;
 [RequireComponent(typeof(SqliteOutput))]
 public class PoseAligner : MonoBehaviour
 {
+    public string JsonDir;
+    
     readonly List<Figure> defined3DFigures = new();
 
     Polygon? currentHighlightedMarker;
@@ -230,6 +233,14 @@ public class PoseAligner : MonoBehaviour
             int countNotNull = figure0Poses.Concat(figure1Poses).Count(pose => pose != null);
 
             Debug.Log("Saved to " + sqliteOutput.DbPath + " Wrote " + countNotNull + " poses");
+        }
+
+        if (Keyboard.current.f5Key.wasPressedThisFrame)
+        {
+            foreach (Figure defined3DFigure in defined3DFigures)
+            {
+                defined3DFigure.SerializeFinal3DPosesTo(JsonDir);
+            }
         }
     }
 

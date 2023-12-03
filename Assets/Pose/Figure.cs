@@ -1,7 +1,9 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using Newtonsoft.Json;
 using Shapes;
 using Shapes.Lines;
 using UnityEngine;
@@ -292,6 +294,33 @@ namespace Pose
             poseMarkers[(int)Joints.R_Ankle].transform.localPosition = pose[(int)Joints.L_Ankle];
 
             Set2DPoseToCurrentMarkerPositionsAt(frameNumber);
+        }
+
+        public void SerializeFinal3DPosesTo(string jsonDirectory)
+        {
+            List<List<Float3>> finalFloat3Poses = finalPoses
+                .Select(pose => pose
+                    .Select(v => new Float3(v.x, v.y, v.z)).ToList()).ToList();
+            string jsonString = JsonConvert.SerializeObject(finalFloat3Poses, Formatting.Indented);
+            string jsonPath = Path.Combine(jsonDirectory, $"figure{role}.json");
+            File.WriteAllText(jsonPath, jsonString);
+            
+            Debug.Log($"Serialized {finalPoses.Count} poses to {jsonPath}");
+        }
+        
+        [Serializable]
+        class Float3
+        {
+            public float x;
+            public float y;
+            public float z;
+            
+            public Float3(float x, float y, float z)
+            {
+                this.x = x;
+                this.y = y;
+                this.z = z;
+            }
         }
     }
 }
