@@ -96,10 +96,10 @@ namespace Pose
         R_UpperArm = 378, // R_Shoulder to R_Elbow
         L_Forearm = 418, // L_Elbow to L_Wrist
         R_Forearm = 460, // R_Elbow to R_Wrist
-        PelvisToSpine = 81, // Pelvis to Spine3
+        PelvisToSpine1 = 9, // Pelvis to Spine1
         Spine3ToSpine2 = 96, // Spine3 to Spine2
         Spine2ToSpine1 = 45, // Spine2 to Spine1
-        Spine1ToNeck = 147, // Spine1 to Neck
+        Spine3ToNeck = 153, // Spine3 to Neck
         NeckToHead = 237, // Neck to Head
         L_Foot = 107, // L_Ankle to L_Foot
         R_Foot = 129, // R_Ankle to R_Foot
