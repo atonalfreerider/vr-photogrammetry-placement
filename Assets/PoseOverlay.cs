@@ -22,21 +22,11 @@ public class PoseOverlay : MonoBehaviour
 
     public void InitFigures(
         GameObject photo,
-        List<List<List<Vector2>>> posesPerFrame,
-        List<SqliteInput.DbFigure> figuresPerFrame)
+        List<List<List<Vector2>>> posesPerFrame)
     {
         figuresByFrame = posesPerFrame;
 
         int figureCount = 0;
-        foreach (SqliteInput.DbFigure dbFigure in figuresPerFrame)
-        {
-            Figure newFigure = photo.AddComponent<Figure>();
-            newFigure.SetRole(figureCount);
-            newFigure.posesByFrame = dbFigure.PosesByFrame;
-            definedFigures.Add(newFigure);
-            newFigure.DrawNames();
-            figureCount++;
-        }
         
         DrawFigureSpears();
     }
@@ -106,7 +96,7 @@ public class PoseOverlay : MonoBehaviour
 
     public Ray?[] PoseRays(int figureCount)
     {
-        Ray?[] returnList = new Ray?[Enum.GetNames(typeof(Joints)).Length];
+        Ray?[] returnList = new Ray?[Enum.GetNames(typeof(CocoJoint)).Length];
 
         for (int i = 0; i < returnList.Length; i++)
         {
@@ -147,7 +137,7 @@ public class PoseOverlay : MonoBehaviour
         if (role < 0) return;
         
         Figure figure0 = definedFigures[role];
-        figure0.posesByFrame[currentFrameNumber] = targetedFigure.Get2DPoseFromCurrentMarkers();
+        figure0.posesByFrame2D[currentFrameNumber] = targetedFigure.Get2DPoseFromCurrentMarkers();
         figure0.SetMarkersToPoseAt(currentFrameNumber);
         figure0.SetVisible(true);
 

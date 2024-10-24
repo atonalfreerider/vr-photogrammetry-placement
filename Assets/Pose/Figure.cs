@@ -11,7 +11,16 @@ using Util;
 
 namespace Pose
 {
-    public enum Joints
+    #region POSE ENUMS
+
+    public enum PoseType
+    {
+        Coco = 0,
+        Halpe = 1,
+        Smpl = 2
+    }
+
+    public enum CocoJoint
     {
         Nose = 0,
         L_Eye = 1,
@@ -32,7 +41,35 @@ namespace Pose
         R_Ankle = 16
     }
 
-    public enum Limbs
+    public enum SmplJoint
+    {
+        Pelvis = 0,
+        L_Hip = 1,
+        R_Hip = 2,
+        Spine1 = 3,
+        L_Knee = 4,
+        R_Knee = 5,
+        Spine2 = 6,
+        L_Ankle = 7,
+        R_Ankle = 8,
+        Spine3 = 9,
+        L_Foot = 10,
+        R_Foot = 11,
+        Neck = 12,
+        L_Collar = 13,
+        R_Collar = 14,
+        Head = 15,
+        L_Shoulder = 16,
+        R_Shoulder = 17,
+        L_Elbow = 18,
+        R_Elbow = 19,
+        L_Wrist = 20,
+        R_Wrist = 21,
+        L_Hand = 22,
+        R_Hand = 23
+    }
+
+    public enum CocoLimbs
     {
         // Precomputed with Szudzik pairing to correspond with joint indices
         R_Upper_Arm = 70,
@@ -47,55 +84,114 @@ namespace Pose
         Shoulders = 47
     }
 
+    public enum SmplLimbs
+    {
+        L_Calf = 60, // L_Ankle to L_Knee
+        R_Calf = 77, // R_Ankle to R_Knee
+        L_Thigh = 17, // L_Hip to L_Knee
+        R_Thigh = 27, // R_Hip to R_Knee
+        L_HipToPelvis = 2, // L_Hip to Pelvis
+        R_HipToPelvis = 6, // R_Hip to Pelvis
+        L_UpperArm = 340, // L_Shoulder to L_Elbow
+        R_UpperArm = 378, // R_Shoulder to R_Elbow
+        L_Forearm = 418, // L_Elbow to L_Wrist
+        R_Forearm = 460, // R_Elbow to R_Wrist
+        PelvisToSpine = 81, // Pelvis to Spine3
+        Spine3ToSpine2 = 96, // Spine3 to Spine2
+        Spine2ToSpine1 = 45, // Spine2 to Spine1
+        Spine1ToNeck = 147, // Spine1 to Neck
+        NeckToHead = 237, // Neck to Head
+        L_Foot = 107, // L_Ankle to L_Foot
+        R_Foot = 129, // R_Ankle to R_Foot
+        L_Hand = 526, // L_Hand to L_Wrist
+        R_Hand = 573, // R_Hand to R_Wrist
+        L_CollarToShoulder = 285, // L_Shoulder to L_Collar
+        R_CollarToShoulder = 320, // R_Shoulder to R_Collar
+        L_CollarToNeck = 194, // L_Collar to Neck
+        R_CollarToNeck = 222 // R_Collar to Neck
+    }
+
+    #endregion
+
     public class Figure : MonoBehaviour
     {
+        List<List<Vector3>> posesByFrame3D = new();
+        readonly Dictionary<int, Polygon> jointPolys = new();
+        StaticLink spinePoly;
+        StaticLink followSpineExtension;
+        StaticLink followHeadAxis;
+        PoseType poseType;
+
         readonly List<Polygon> poseMarkers = new();
         readonly List<StaticLink> jointLinks = new();
 
         public int role;
 
         // only set when figure is fully defined
-        public List<List<Vector2>?> posesByFrame = new();
-        public Dictionary<Limbs, float> LimbLengths = new();
-
-        readonly List<List<Vector3>> finalPoses = new();
+        public List<List<Vector2>?> posesByFrame2D = new();
+        public Dictionary<CocoLimbs, float> LimbLengths = new();
 
         Main.ImgMetadata? imgMetadata => transform.parent.GetComponent<CameraSetup>().imgMeta;
 
-        void Awake()
+        public void Init(List<List<Vector3>> posesByFrame, PoseType poseType)
         {
-            string[] enumNames = Enum.GetNames(typeof(Joints));
-            for (int j = 0; j < enumNames.Length; j++)
+            posesByFrame3D = posesByFrame;
+            this.poseType = poseType;
+            switch (poseType)
             {
-                Polygon sphere = Instantiate(PolygonFactory.Instance.icosahedron0);
-                sphere.AddCollider(new Vector3(3, 1000, 3)); // compensate for flat photo container
-                sphere.gameObject.SetActive(false);
-                sphere.transform.localScale = Vector3.one * .005f;
-                sphere.transform.SetParent(transform, false);
-                sphere.name = enumNames[j];
-                sphere.myFigure = this;
-                poseMarkers.Add(sphere);
+                case PoseType.Coco:
+                    BuildCoco();
+                    break;
+                case PoseType.Halpe:
+                    break;
+                case PoseType.Smpl:
+                    BuildSmpl();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(poseType), poseType, null);
+            }
+        }
+
+        void BuildSmpl()
+        {
+            for (int j = 0; j < Enum.GetNames(typeof(SmplJoint)).Length; j++)
+            {
+                Polygon joint = Instantiate(PolygonFactory.Instance.icosahedron0);
+                joint.gameObject.SetActive(true);
+                joint.name = ((SmplJoint)j).ToString();
+                joint.transform.SetParent(transform, false);
+                joint.transform.localScale = Vector3.one * .02f;
+                joint.SetColor(Cividis.CividisColor(.7f));
+                jointPolys.Add(j, joint);
             }
 
-            jointLinks.Add(LinkFromTo((int)Joints.Nose, (int)Joints.L_Eye, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.Nose, (int)Joints.R_Eye, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.L_Eye, (int)Joints.R_Eye, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.L_Eye, (int)Joints.L_Ear, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.L_Ear, (int)Joints.L_Shoulder, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.R_Eye, (int)Joints.R_Ear, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.R_Ear, (int)Joints.R_Shoulder, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.R_Hip, (int)Joints.R_Knee, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.R_Knee, (int)Joints.R_Ankle, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.L_Hip, (int)Joints.L_Knee, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.L_Knee, (int)Joints.L_Ankle, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.R_Shoulder, (int)Joints.R_Elbow, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.R_Elbow, (int)Joints.R_Wrist, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.L_Shoulder, (int)Joints.L_Elbow, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.L_Elbow, (int)Joints.L_Wrist, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.R_Shoulder, (int)Joints.L_Shoulder, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.R_Hip, (int)Joints.L_Hip, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.R_Shoulder, (int)Joints.R_Hip, poseMarkers));
-            jointLinks.Add(LinkFromTo((int)Joints.L_Shoulder, (int)Joints.L_Hip, poseMarkers));
+            foreach (SmplLimbs limb in Enum.GetValues(typeof(SmplLimbs)))
+            {
+                uint[] pair = Szudzik.uintSzudzik2tupleReverse((uint)limb);
+                StaticLink limbLink = LinkFromTo((int)pair[0], (int)pair[1]);
+                jointLinks.Add(limbLink);
+            }
+        }
+
+        void BuildCoco()
+        {
+            for (int j = 5; j < Enum.GetNames(typeof(CocoJoint)).Length; j++) // ignore head
+            {
+                Polygon joint = Instantiate(PolygonFactory.Instance.icosahedron0);
+                joint.gameObject.SetActive(true);
+                joint.name = ((CocoJoint)j).ToString();
+                joint.transform.SetParent(transform, false);
+                joint.transform.localScale = Vector3.one * .02f;
+                joint.SetColor(Cividis.CividisColor(.7f));
+                jointPolys.Add(j, joint);
+            }
+
+            foreach (CocoLimbs limb in Enum.GetValues(typeof(CocoLimbs)))
+            {
+                uint[] pair = Szudzik.uintSzudzik2tupleReverse((uint)limb);
+                StaticLink limbLink = LinkFromTo((int)pair[0], (int)pair[1]);
+                jointLinks.Add(limbLink);
+            }
         }
 
         public void DrawNames()
@@ -112,13 +208,22 @@ namespace Pose
             }
         }
 
-        StaticLink LinkFromTo(int index1, int index2, IReadOnlyList<Polygon> joints)
+        StaticLink LinkFromTo(int index1, int index2)
         {
             StaticLink staticLink = Instantiate(StaticLink.prototypeStaticLink);
             staticLink.gameObject.SetActive(true);
+            staticLink.name = poseType switch
+            {
+                PoseType.Coco => $"{((CocoJoint)index1).ToString()}-{((CocoJoint)index2).ToString()}",
+                PoseType.Smpl => $"{((SmplJoint)index1).ToString()}-{((SmplJoint)index2).ToString()}",
+                _ => throw new ArgumentOutOfRangeException(nameof(poseType), poseType,
+                    null) // Handle unexpected poseType values
+            };
+
+
+            staticLink.SetColor(Cividis.CividisColor(.8f));
             staticLink.transform.SetParent(transform, false);
-            staticLink.LinkFromTo(joints[index1].transform, joints[index2].transform);
-            staticLink.SetColor(Viridis.ViridisColor((float)index1 / Enum.GetNames(typeof(Joints)).Length));
+            staticLink.LinkFromTo(jointPolys[index1].transform, jointPolys[index2].transform);
             return staticLink;
         }
 
@@ -154,12 +259,12 @@ namespace Pose
 
         public void Set2DPoseToCurrentMarkerPositionsAt(int currentFrame)
         {
-            if (imgMetadata == null || currentFrame >= posesByFrame.Count) return;
-            List<Vector2>? pose = posesByFrame[currentFrame];
+            if (imgMetadata == null || currentFrame >= posesByFrame2D.Count) return;
+            List<Vector2>? pose = posesByFrame2D[currentFrame];
             if (pose == null)
             {
                 pose = new List<Vector2>();
-                posesByFrame[currentFrame] = pose;
+                posesByFrame2D[currentFrame] = pose;
             }
 
             for (int i = 0; i < pose.Count; i++)
@@ -196,9 +301,9 @@ namespace Pose
 
         public void Set3DPose(List<Vector3> pose)
         {
-            for (int i = 0; i < poseMarkers.Count; i++)
+            foreach (KeyValuePair<int, Polygon> keyValuePair in jointPolys)
             {
-                poseMarkers[i].transform.localPosition = pose[i];
+                keyValuePair.Value.transform.localPosition = pose[keyValuePair.Key];
             }
 
             UpdateLinks();
@@ -206,13 +311,11 @@ namespace Pose
 
         public void Set3DPoseAt(int frameNumber)
         {
-            if (finalPoses.Count <= frameNumber) return;
-            Set3DPose(finalPoses[frameNumber]);
+            Set3DPose(posesByFrame3D[frameNumber]);
         }
 
         public void AddFinal3DPose(List<Vector3> pose)
         {
-            finalPoses.Add(pose);
         }
 
         public void SetMarkersToPose(List<Vector2> pose)
@@ -238,7 +341,7 @@ namespace Pose
         public void SetMarkersToPoseAt(int frameNumber)
         {
             if (imgMetadata == null) return;
-            List<Vector2>? pose = posesByFrame[frameNumber];
+            List<Vector2>? pose = posesByFrame2D[frameNumber];
 
             if (pose == null) return;
 
@@ -260,8 +363,8 @@ namespace Pose
 
         public Vector3 GetJointAtFrame(int joint, int frame)
         {
-            if (frame >= posesByFrame.Count) return Vector3.zero;
-            List<Vector2>? pose = posesByFrame[frame];
+            if (frame >= posesByFrame2D.Count) return Vector3.zero;
+            List<Vector2>? pose = posesByFrame2D[frame];
             if (pose == null) return Vector3.zero;
 
             // project onto photo
@@ -273,48 +376,63 @@ namespace Pose
 
         public bool HasPoseValueAt(int frameNumber)
         {
-            return posesByFrame[frameNumber] != null;
+            return posesByFrame2D[frameNumber] != null;
         }
 
         public void FlipPose(int frameNumber)
         {
             List<Vector3> pose = poseMarkers.Select(x => x.transform.localPosition).ToList();
 
-            poseMarkers[(int)Joints.L_Shoulder].transform.localPosition = pose[(int)Joints.R_Shoulder];
-            poseMarkers[(int)Joints.R_Shoulder].transform.localPosition = pose[(int)Joints.L_Shoulder];
-            poseMarkers[(int)Joints.L_Elbow].transform.localPosition = pose[(int)Joints.R_Elbow];
-            poseMarkers[(int)Joints.R_Elbow].transform.localPosition = pose[(int)Joints.L_Elbow];
-            poseMarkers[(int)Joints.L_Wrist].transform.localPosition = pose[(int)Joints.R_Wrist];
-            poseMarkers[(int)Joints.R_Wrist].transform.localPosition = pose[(int)Joints.L_Wrist];
-            poseMarkers[(int)Joints.L_Hip].transform.localPosition = pose[(int)Joints.R_Hip];
-            poseMarkers[(int)Joints.R_Hip].transform.localPosition = pose[(int)Joints.L_Hip];
-            poseMarkers[(int)Joints.L_Knee].transform.localPosition = pose[(int)Joints.R_Knee];
-            poseMarkers[(int)Joints.R_Knee].transform.localPosition = pose[(int)Joints.L_Knee];
-            poseMarkers[(int)Joints.L_Ankle].transform.localPosition = pose[(int)Joints.R_Ankle];
-            poseMarkers[(int)Joints.R_Ankle].transform.localPosition = pose[(int)Joints.L_Ankle];
+            poseMarkers[(int)CocoJoint.L_Shoulder].transform.localPosition = pose[(int)CocoJoint.R_Shoulder];
+            poseMarkers[(int)CocoJoint.R_Shoulder].transform.localPosition = pose[(int)CocoJoint.L_Shoulder];
+            poseMarkers[(int)CocoJoint.L_Elbow].transform.localPosition = pose[(int)CocoJoint.R_Elbow];
+            poseMarkers[(int)CocoJoint.R_Elbow].transform.localPosition = pose[(int)CocoJoint.L_Elbow];
+            poseMarkers[(int)CocoJoint.L_Wrist].transform.localPosition = pose[(int)CocoJoint.R_Wrist];
+            poseMarkers[(int)CocoJoint.R_Wrist].transform.localPosition = pose[(int)CocoJoint.L_Wrist];
+            poseMarkers[(int)CocoJoint.L_Hip].transform.localPosition = pose[(int)CocoJoint.R_Hip];
+            poseMarkers[(int)CocoJoint.R_Hip].transform.localPosition = pose[(int)CocoJoint.L_Hip];
+            poseMarkers[(int)CocoJoint.L_Knee].transform.localPosition = pose[(int)CocoJoint.R_Knee];
+            poseMarkers[(int)CocoJoint.R_Knee].transform.localPosition = pose[(int)CocoJoint.L_Knee];
+            poseMarkers[(int)CocoJoint.L_Ankle].transform.localPosition = pose[(int)CocoJoint.R_Ankle];
+            poseMarkers[(int)CocoJoint.R_Ankle].transform.localPosition = pose[(int)CocoJoint.L_Ankle];
 
             Set2DPoseToCurrentMarkerPositionsAt(frameNumber);
         }
 
         public void SerializeFinal3DPosesTo(string jsonDirectory)
         {
-            List<List<Float3>> finalFloat3Poses = finalPoses
+            List<List<Float3>> finalFloat3Poses = posesByFrame3D
                 .Select(pose => pose
                     .Select(v => new Float3(v.x, v.y, v.z)).ToList()).ToList();
             string jsonString = JsonConvert.SerializeObject(finalFloat3Poses, Formatting.Indented);
             string jsonPath = Path.Combine(jsonDirectory, $"figure{role}.json");
             File.WriteAllText(jsonPath, jsonString);
-            
-            Debug.Log($"Serialized {finalPoses.Count} poses to {jsonPath}");
+
+            Debug.Log($"Serialized {posesByFrame3D.Count} poses to {jsonPath}");
         }
-        
+
+        Figure ReadAllPosesFrom(string jsonPath, string role, PoseType poseType)
+        {
+            Figure figure = new GameObject(role).AddComponent<Figure>();
+
+            string jsonString = File.ReadAllText(jsonPath);
+            List<List<Float3>> allPoses = JsonConvert.DeserializeObject<List<List<Float3>>>(jsonString);
+            List<List<Vector3>> allPosesVector3 = allPoses
+                .Select(pose => pose.Select(float3 => new Vector3(float3.x, float3.y, float3.z)).ToList()).ToList();
+
+
+            int FRAME_MAX = allPosesVector3.Count;
+
+            return figure;
+        }
+
         [Serializable]
-        class Float3
+        public class Float3
         {
             public float x;
             public float y;
             public float z;
-            
+
             public Float3(float x, float y, float z)
             {
                 this.x = x;

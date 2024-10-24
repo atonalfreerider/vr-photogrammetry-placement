@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using IO;
 using Newtonsoft.Json;
-using Pose;
 using Shapes;
 using Shapes.Lines;
 using UI;
@@ -64,23 +63,29 @@ public class Main : MonoBehaviour
 
     void Start()
     {
-        CameraSetup.GroundingFeatures worldAnchorVector2 =
-            JsonConvert.DeserializeObject<CameraSetup.GroundingFeatures>(File.ReadAllText(Path.Combine(PhotoFolderPath,
-                "worldAnchors.json")));
+        string worldAnchPath = Path.Combine(PhotoFolderPath,
+            "worldAnchors.json");
+        if (File.Exists(worldAnchPath))
+        {
+            CameraSetup.GroundingFeatures worldAnchorVector2 =
+                JsonConvert.DeserializeObject<CameraSetup.GroundingFeatures>(File.ReadAllText(worldAnchPath));
 
-        Vector2 floorCenter = new Vector2(
-            worldAnchorVector2.groundingCoordsX.First(),
-            worldAnchorVector2.groundingCoordsY.First());
+            Vector2 floorCenter = new Vector2(
+                worldAnchorVector2.groundingCoordsX.First(),
+                worldAnchorVector2.groundingCoordsY.First());
 
-        Polygon origin = Instantiate(PolygonFactory.Instance.icosahedron0);
-        origin.gameObject.SetActive(true);
-        origin.transform.SetParent(transform, false);
-        origin.transform.localScale = Vector3.one * .01f;
-        origin.transform.localPosition = new Vector3(floorCenter.x, 0, floorCenter.y);
-        origin.SetColor(Color.blue);
-        origin.name = "Origin";
 
-        worldAnchors.Add(0, origin);
+            Polygon origin = Instantiate(PolygonFactory.Instance.icosahedron0);
+            origin.gameObject.SetActive(true);
+            origin.transform.SetParent(transform, false);
+            origin.transform.localScale = Vector3.one * .01f;
+            origin.transform.localPosition = new Vector3(floorCenter.x, 0, floorCenter.y);
+            origin.SetColor(Color.blue);
+            origin.name = "Origin";
+
+            worldAnchors.Add(0, origin);
+
+        }
 
         if (!string.IsNullOrEmpty(PhotoFolderPath))
         {
@@ -99,6 +104,9 @@ public class Main : MonoBehaviour
                 cameraSetup.transform.Translate(Vector3.back * count * .01f);
                 cameraSetup.SetFrame(0, true);
                 cameraSetups.Add(cameraSetup);
+                
+                
+                
                 count++;
             }
 
@@ -168,11 +176,11 @@ public class Main : MonoBehaviour
         if (PoseAligner != null)
         {
             //PoseAligner.Draw3DPoses(cameras.Values.ToList());
-            PoseAligner.DrawAllTrails(132);
+            //PoseAligner.DrawAllTrails(132);
             PoseAligner.Draw3DPoseAtFrame(0);
         }
     }
-
+    
     void OnVrSetupChange(GameObject setup)
     {
         if (setup.name == "GenericXR")
@@ -190,9 +198,9 @@ public class Main : MonoBehaviour
     public void Advance()
     {
         currentFrameNumber++;
-        if (currentFrameNumber > SqliteInput.FrameMax - 1)
+        if (currentFrameNumber > PoseAligner.FrameMax - 1)
         {
-            currentFrameNumber = SqliteInput.FrameMax - 1;
+            currentFrameNumber = PoseAligner.FrameMax - 1;
         }
 
         Debug.Log(currentFrameNumber);
