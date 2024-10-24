@@ -8,11 +8,12 @@ using Shapes;
 using Shapes.Lines;
 using UI;
 using UnityEngine;
+using UnityEngine.Video;
 
 public class CameraSetup : MonoBehaviour
 {
     public PoseOverlay? PoseOverlay;
-    Rectangle photo;
+    GameObject photo;
     Polygon focalSphere;
     string dirPath;
 
@@ -28,6 +29,7 @@ public class CameraSetup : MonoBehaviour
 
     Plane currentPlane => new(photo.transform.up, photo.transform.position);
     public GameObject GetPhotoGameObject => photo.gameObject;
+    VideoPlayer videoPlayer;
 
     void Awake()
     {
@@ -42,16 +44,21 @@ public class CameraSetup : MonoBehaviour
 
     public void Init(string initDirPath, bool addPoseOverlay)
     {
-        dirPath = initDirPath;
-
         // first time
-        photo = Instantiate(NewCube.textureRectPoly, transform, false);
+        photo = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        photo.AddComponent<BoxCollider>();
         photo.name = "PHOTO: " + dirPath;
-        photo.gameObject.SetActive(true);
+        photo.SetActive(true);
         photo.transform.SetParent(transform, false);
-        photo.AddCollider(new Vector3(photo.transform.localScale.x, .1f, photo.transform.localScale.z));
-
-        photo.transform.Rotate(Vector3.right, -90);
+        photo.transform.Translate(Vector3.forward * 1);
+        
+        videoPlayer = photo.AddComponent<VideoPlayer>();
+        videoPlayer.targetCameraAlpha = .5f;
+        videoPlayer.source = VideoSource.Url;
+        videoPlayer.renderMode = VideoRenderMode.MaterialOverride;
+        videoPlayer.playOnAwake = true;
+        dirPath = initDirPath;
+        videoPlayer.url = Directory.EnumerateFiles(initDirPath, "*.mp4").First();
 
         focalSphere.name = "SPHERE: " + dirPath;
 
@@ -69,7 +76,8 @@ public class CameraSetup : MonoBehaviour
             foreach (string poseJsonPath in Directory.EnumerateFiles(dirPath, "*.json"))
             {
                 if (poseJsonPath.Contains("grounding")) continue;
-                Dictionary<int, Pose> posesByFrame = JsonConvert.DeserializeObject<Dictionary<int, Pose>>(File.ReadAllText(poseJsonPath));
+                Dictionary<int, Pose> posesByFrame =
+                    JsonConvert.DeserializeObject<Dictionary<int, Pose>>(File.ReadAllText(poseJsonPath));
                 List<List<Vector2>> poses = new();
                 foreach (KeyValuePair<int, Pose> keyValuePair in posesByFrame)
                 {
@@ -78,11 +86,10 @@ public class CameraSetup : MonoBehaviour
 
                     poses.Add(poseList);
                 }
-                
+
                 figuresPosesPerFrame.Add(poses);
-                
             }
-            
+
             PoseOverlay.InitFigures(photo.gameObject, figuresPosesPerFrame);
         }
     }
@@ -98,26 +105,8 @@ public class CameraSetup : MonoBehaviour
 
     public void SetFrame(int frameNumber, bool isFirst)
     {
-        photo.gameObject.name = frameNumber.ToString();
-
-        imgMeta = null;
-        string imageName = Path.Combine(dirPath, $"{frameNumber:000}.jpg");
-        if (File.Exists(imageName))
-        {
-            Texture2D texture =
-                new(TextureScale, TextureScale, TextureFormat.RGBA32, false)
-                    { filterMode = FilterMode.Point };
-            texture.LoadImage(File.ReadAllBytes(imageName));
-            imgMeta = new Main.ImgMetadata(5, texture.width, texture.height);
-        }
-        else
-        {
-            return;
-        }
-
-        photo.LoadTexture(File.ReadAllBytes(imageName));
-        photo.transform.localScale = new Vector3(imgMeta.Width, 1, imgMeta.Height) * PixelToMeterRatio;
-
+        videoPlayer.frame = frameNumber;
+        
         if (!isFirst && PoseOverlay != null)
         {
             PoseOverlay.LoadPose(frameNumber, photo.gameObject);
@@ -172,7 +161,7 @@ public class CameraSetup : MonoBehaviour
 
         return entropy;
     }
-    
+
     void LoadGroundingFeatures(string jsonPath)
     {
         GroundingFeatures groundingFeatures = JsonConvert.DeserializeObject<GroundingFeatures>(

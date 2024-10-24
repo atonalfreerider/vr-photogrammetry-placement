@@ -9,6 +9,7 @@ namespace Shapes
         public PolygonPool PolygonPool;
         public Material mainMat;
         public Polygon icosahedron0;
+        public Material videoMat;
         
         void Awake()
         {
