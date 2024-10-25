@@ -18,7 +18,7 @@ public class CameraSetup : MonoBehaviour
     string dirPath;
 
     const float PixelToMeterRatio = .001f;
-    const int TextureScale = 100;
+    const int TextureScale = 1;
     public Main.ImgMetadata? imgMeta;
 
     float focal;
@@ -57,6 +57,14 @@ public class CameraSetup : MonoBehaviour
         videoPlayer.source = VideoSource.Url;
         videoPlayer.renderMode = VideoRenderMode.MaterialOverride;
         videoPlayer.playOnAwake = true;
+        videoPlayer.prepareCompleted += source =>
+        {
+            photo.transform.localScale = new Vector3(
+                source.width * PixelToMeterRatio * TextureScale,
+                source.height * PixelToMeterRatio * TextureScale,
+                1);
+            photo.GetComponent<Renderer>().material.mainTexture = videoPlayer.texture;
+        };
         dirPath = initDirPath;
         videoPlayer.url = Directory.EnumerateFiles(initDirPath, "*.mp4").First();
 
@@ -71,36 +79,8 @@ public class CameraSetup : MonoBehaviour
         if (addPoseOverlay)
         {
             PoseOverlay = gameObject.AddComponent<PoseOverlay>();
-
-            List<List<List<Vector2>>> figuresPosesPerFrame = new();
-            foreach (string poseJsonPath in Directory.EnumerateFiles(dirPath, "*.json"))
-            {
-                if (poseJsonPath.Contains("grounding")) continue;
-                Dictionary<int, Pose> posesByFrame =
-                    JsonConvert.DeserializeObject<Dictionary<int, Pose>>(File.ReadAllText(poseJsonPath));
-                List<List<Vector2>> poses = new();
-                foreach (KeyValuePair<int, Pose> keyValuePair in posesByFrame)
-                {
-                    Pose poseFrame = keyValuePair.Value;
-                    List<Vector2> poseList = poseFrame.keypoints.Select(kpt => new Vector2(kpt[0], kpt[1])).ToList();
-
-                    poses.Add(poseList);
-                }
-
-                figuresPosesPerFrame.Add(poses);
-            }
-
-            PoseOverlay.InitFigures(photo.gameObject, figuresPosesPerFrame);
+            PoseOverlay.InitFigures(dirPath);
         }
-    }
-
-    [Serializable]
-    class Pose
-    {
-        public int id;
-        public List<float> bbox;
-        public float confidence;
-        public List<List<float>> keypoints;
     }
 
     public void SetFrame(int frameNumber, bool isFirst)

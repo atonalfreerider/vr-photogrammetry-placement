@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using Newtonsoft.Json;
 using Pose;
 using Shapes;
 using Shapes.Lines;
@@ -8,32 +10,28 @@ using UnityEngine;
 
 public class PoseOverlay : MonoBehaviour
 {
-    List<List<List<Vector2>>> figuresByFrame = new();
-
-    /// <summary>
-    /// N number of figures to be drawn per frame. They have no persistence.
-    /// </summary>
-    readonly List<Figure> unknownFigures = new();
-    readonly List<Figure> definedFigures = new();
+    List<Figure> figures2D = new();
 
     readonly List<StaticLink> figureSpears = new();
 
     bool poseMarkerCollidersOn = false;
 
-    public void InitFigures(
-        GameObject photo,
-        List<List<List<Vector2>>> posesPerFrame)
+    public void InitFigures(string dirPath)
     {
-        figuresByFrame = posesPerFrame;
+        foreach (string poseJsonPath in Directory.EnumerateFiles(dirPath, "*.json"))
+        {
+            if (poseJsonPath.Contains("grounding")) continue;
 
-        int figureCount = 0;
-        
+            Figure newFigure = Figure.ReadAll2DPosesFrom(poseJsonPath);
+            newFigure.gameObject.transform.SetParent(transform, false);
+            figures2D.Add(newFigure);
+        }
         DrawFigureSpears();
     }
     
     void DrawFigureSpears()
     {
-        for (int i = 0; i < definedFigures.Count; i++)
+        for (int i = 0; i < figures2D.Count; i++)
         {
             StaticLink figureSpear = Instantiate(StaticLink.prototypeStaticLink);
             figureSpear.gameObject.SetActive(false);
@@ -45,44 +43,16 @@ public class PoseOverlay : MonoBehaviour
 
     public void LoadPose(int frameNumber, GameObject photo)
     {
-        foreach (Figure figure in unknownFigures)
+        foreach (Figure figure2D in figures2D)
         {
-            figure.SetVisible(false);
-        }
-
-        foreach (Figure figure in definedFigures)
-        {
-            figure.SetMarkersToPoseAt(frameNumber);
-        }
-
-        if (definedFigures.All(x => x.HasPoseValueAt(frameNumber))) return;
-
-        foreach (Figure figure in definedFigures)
-        {
-            figure.SetVisible(false);
-        }
-
-        List<List<Vector2>> frame = figuresByFrame[frameNumber];
-        for (int i = 0; i < frame.Count; i++)
-        {
-            if (unknownFigures.Count <= i)
-            {
-                Figure figure = photo.AddComponent<Figure>();
-                figure.SetRole(-1);
-                unknownFigures.Add(figure);
-            }
-
-            Figure figureAtI = unknownFigures[i];
-            figureAtI.SetVisible(true);
-            figureAtI.SetMarkersToPose(frame[i]);
-            figureAtI.SetPoseMarkerColliders(poseMarkerCollidersOn);
+            figure2D.Set2DPoseToCurrentMarkerPositionsAt(frameNumber);
         }
     }
 
     public void DrawSpear(int jointNumber)
     {
         int count = 0;
-        foreach (Figure definedFigure in definedFigures)
+        foreach (Figure definedFigure in figures2D)
         {
             Polygon figure0Target = definedFigure.GetCurrentPoseJoint(jointNumber);
             StaticLink figure0Spear = figureSpears[count];
@@ -101,7 +71,7 @@ public class PoseOverlay : MonoBehaviour
         for (int i = 0; i < returnList.Length; i++)
         {
             Ray? rayToJoint = null;
-            Polygon figureJoint = definedFigures[figureCount].GetCurrentPoseJoint(i);
+            Polygon figureJoint = figures2D[figureCount].GetCurrentPoseJoint(i);
             if (figureJoint.gameObject.activeInHierarchy)
             {
                 rayToJoint = new Ray(
@@ -117,26 +87,19 @@ public class PoseOverlay : MonoBehaviour
     
     public Ray RayFromJointFromFigureAtFrame(int jointNumber, int figureCount, int frameNumber)
     {
-        Vector3 figureJoint = definedFigures[figureCount].GetJointAtFrame(jointNumber, frameNumber);
+        Vector3 figureJoint = figures2D[figureCount].GetJointAtFrame(jointNumber, frameNumber);
         return new Ray(
             transform.position,
             Vector3.Normalize(figureJoint - transform.position));
     }
 
-    public void SetMarkers(bool isOn)
-    {
-        poseMarkerCollidersOn = isOn;
-        foreach (Figure unknownFigure in unknownFigures)
-        {
-            unknownFigure.SetPoseMarkerColliders(poseMarkerCollidersOn);
-        }
-    }
+
 
     public void CopyPoseAtFrameTo(Figure targetedFigure, int role, int currentFrameNumber)
     {
         if (role < 0) return;
         
-        Figure figure0 = definedFigures[role];
+        Figure figure0 = figures2D[role];
         figure0.posesByFrame2D[currentFrameNumber] = targetedFigure.Get2DPoseFromCurrentMarkers();
         figure0.SetMarkersToPoseAt(currentFrameNumber);
         figure0.SetVisible(true);
@@ -146,6 +109,6 @@ public class PoseOverlay : MonoBehaviour
 
     public Tuple<Figure, Figure> GetFigures()
     {
-        return new Tuple<Figure, Figure>(definedFigures[0], definedFigures[1]);
+        return new Tuple<Figure, Figure>(figures2D[0], figures2D[1]);
     }
 }

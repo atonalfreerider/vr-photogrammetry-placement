@@ -252,10 +252,6 @@ public class Main : MonoBehaviour
                 foreach (CameraSetup cameraSetup in cameras.Values)
                 {
                     cameraSetup.SetCollider(true);
-                    if (cameraSetup.PoseOverlay != null)
-                    {
-                        cameraSetup.PoseOverlay.SetMarkers(false);
-                    }
                 }
 
                 break;
@@ -263,10 +259,6 @@ public class Main : MonoBehaviour
                 foreach (CameraSetup cameraSetup in cameras.Values)
                 {
                     cameraSetup.SetCollider(false);
-                    if (cameraSetup.PoseOverlay != null)
-                    {
-                        cameraSetup.PoseOverlay.SetMarkers(true);
-                    }
                 }
 
                 break;

@@ -614,7 +614,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa0aedc006c84f319eb5e0fc0c7e81a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PhotoFolderPath: C:\Users\johnb\OneDrive\Desktop\spin1
+  PhotoFolderPath: C:\Users\johnb\OneDrive\Desktop\paolo-paloma
   SDKManager: {fileID: 675674842}
   PoseAligner: {fileID: 1040558336}
 --- !u!114 &1040558336

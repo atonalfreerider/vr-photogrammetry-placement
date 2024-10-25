@@ -411,19 +411,43 @@ namespace Pose
             Debug.Log($"Serialized {posesByFrame3D.Count} poses to {jsonPath}");
         }
 
-        Figure ReadAllPosesFrom(string jsonPath, string role, PoseType poseType)
+        public static Figure ReadAll3DPosesFrom(string jsonPath)
         {
-            Figure figure = new GameObject(role).AddComponent<Figure>();
+            Figure figure = new GameObject(jsonPath).AddComponent<Figure>();
 
             string jsonString = File.ReadAllText(jsonPath);
             List<List<Float3>> allPoses = JsonConvert.DeserializeObject<List<List<Float3>>>(jsonString);
             List<List<Vector3>> allPosesVector3 = allPoses
                 .Select(pose => pose.Select(float3 => new Vector3(float3.x, float3.y, float3.z)).ToList()).ToList();
 
+            return figure;
+        }
 
-            int FRAME_MAX = allPosesVector3.Count;
+        public static Figure ReadAll2DPosesFrom(string poseJsonPath)
+        {
+            Figure figure = new GameObject(poseJsonPath).AddComponent<Figure>();
+            
+            Dictionary<int, Pose> posesByFrame =
+                JsonConvert.DeserializeObject<Dictionary<int, Pose>>(File.ReadAllText(poseJsonPath));
+            List<List<Vector2>> poses = new();
+            foreach (KeyValuePair<int, Pose> keyValuePair in posesByFrame)
+            {
+                Pose poseFrame = keyValuePair.Value;
+                List<Vector2> poseList = poseFrame.keypoints.Select(kpt => new Vector2(kpt[0], kpt[1])).ToList();
+
+                poses.Add(poseList);
+            }
 
             return figure;
+        }
+        
+        [Serializable]
+        class Pose
+        {
+            public int id;
+            public List<float> bbox;
+            public float confidence;
+            public List<List<float>> keypoints;
         }
 
         [Serializable]
